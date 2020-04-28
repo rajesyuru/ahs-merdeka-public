@@ -1,0 +1,13 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "jakarta123",
+    "database": "ahs",
+    "host": "127.0.0.1",
+    "dialect": "postgres",
+    "logging": true
+  },
+  "production": {
+    "user_env_variable": "DATABASE_URL"
+  }
+}
