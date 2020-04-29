@@ -17,11 +17,21 @@ module.exports = {
       image: {
         type: Sequelize.STRING
       },
-      createdAt: {
+      merchant_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        onDelete: 'CASCADE',
+        references: {
+          model: 'Merchants',
+          key: 'id',
+          as: 'merchant_id'
+        }
+      },
+      created_at: {
         allowNull: false,
         type: Sequelize.DATE
       },
-      updatedAt: {
+      updated_at: {
         allowNull: false,
         type: Sequelize.DATE
       }
