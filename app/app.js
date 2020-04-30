@@ -1,6 +1,10 @@
 const express = require('express');
 
+const routers = require('./routers');
+
 const app = express();
+
+app.use(routers);
 
 const port = process.env.PORT || 3000;
 
