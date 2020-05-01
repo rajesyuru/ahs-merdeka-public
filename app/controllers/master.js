@@ -1,8 +1,8 @@
 const {Group, Op} = require('../models');
 
 exports.groups = async (req, res) => {
-    const page = req.query.page || 1;
-    const limit = req.query.limit || 20;
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 20;
     const search = req.query.search || '';
     const offset = (page - 1) * limit;
 
@@ -27,7 +27,7 @@ exports.groups = async (req, res) => {
         status: 'success',
         totalData: count,
         totalPage: Math.ceil(count / limit),
-        page: page * 1,
+        page: page,
         data: groups,
     });
 };
