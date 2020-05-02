@@ -4,7 +4,7 @@ module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.addColumn('Users', 'merchant_id', {
       type: Sequelize.INTEGER,
-      allowNull: false,
+      allowNull: true,
       onDelete: 'CASCADE',
       references: {
         model: 'Merchants',
