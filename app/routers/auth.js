@@ -1,5 +1,5 @@
 const express = require('express');
-const jwtAuth = require('../middlewares/jwt-auth');
+const jwtAuth = require('../mwares/jwt-auth');
 
 const authController = require('../controllers/auth');
 
