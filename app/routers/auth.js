@@ -6,6 +6,6 @@ const authController = require('../controllers/auth');
 const router = express.Router();
 
 router.post('/login', authController.login);
-router.get('/me', jwtAuth);
+router.get('/me', jwtAuth, authController.me);
 
 module.exports = router;
