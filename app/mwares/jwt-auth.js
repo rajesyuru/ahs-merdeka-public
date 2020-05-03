@@ -36,4 +36,41 @@ const jwtAuth = (req, res, next) => {
     }
 };
 
-module.exports = jwtAuth;
+const jwtRefreshAuth = (req, res, next) => {
+    if (req.headers.authorization) {
+        const headerAuth = req.headers.authorization.split(' ');
+        if (headerAuth.length === 2) {
+            const token = headerAuth[1];
+
+            try {
+                const payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+
+                req.authUser = payload;
+
+                next();
+            } catch (e) {
+                console.log('error', e);
+
+                res.status(401).send({
+                    status: 'error',
+                    message: e.message
+                });
+            }
+        } else {
+            res.status(401).send({
+                status: 'error',
+                message: 'Invalid authorization header'
+            });
+        }
+    } else {
+        res.status(401).send({
+            status: 'error',
+            message: 'Need authorization header'
+        });
+    }
+};
+
+module.exports = {
+    jwtAuth,
+    jwtRefreshAuth
+};
