@@ -70,3 +70,44 @@ exports.me = (req, res) => {
         data: req.authUser
     });
 };
+
+exports.register = async (req, res) => {
+    const name = req.body.name;
+    const email = req.body.email;
+    const password = req.body.password;
+    const group_id = req.body.group_id || null;
+    const merchant_id = req.body.merchant_id || null;
+
+    const doesEmailExist = await User.findOne({
+        where: {
+            email: email
+        }
+    });
+
+    // console.log(merchant_id)
+
+    if (!doesEmailExist) {
+        const user = await User.create({
+            name: name,
+            email: email,
+            password: bcrypt.hashSync(password, 8),
+            group_id: group_id,
+            merchant_id: merchant_id
+        });
+    
+        res.send({
+            status: 'success',
+            data: {
+                name: user.name,
+                email: user.email,
+                group_id: user.group_id,
+                merchant_id: user.merchant_id,
+            },
+        });
+    } else {
+        res.send({
+            status: 'error',
+            message: 'Email telah dipakai'
+        })
+    }    
+}
