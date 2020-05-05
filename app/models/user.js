@@ -11,7 +11,15 @@ module.exports = (sequelize, DataTypes) => {
     updatedAt: 'updated_at'
   });
   User.associate = function(models) {
-    // associations can be defined here
+    models.User.belongsTo(models.Group, {
+      as: 'group',
+      foreignKey: 'group_id',
+    });
+
+    models.User.belongsTo(models.Merchant, {
+      as: 'merchant',
+      foreignKey: 'merchant_id',
+    });
   };
   return User;
 };
