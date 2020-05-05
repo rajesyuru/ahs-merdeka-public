@@ -3,7 +3,7 @@ const express = require('express');
 const {jwtAuth} = require('../mwares/jwt-auth');
 const {canAccess} = require('../permissions/merchant');
 
-const masterController = require('../controllers/master');
+const usersController = require('../controllers/user');
 
 const router = express.Router();
 
@@ -20,6 +20,6 @@ router.use((req, res, next) => {
     next();
 });
 
-router.get('/groups', masterController.groups);
+router.get('/', usersController.users);
 
 module.exports = router;
