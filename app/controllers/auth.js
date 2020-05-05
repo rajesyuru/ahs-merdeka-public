@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { User, Group, Merchant } = require('../models');
-const Joi = require('@hapi/joi')
+const Joi = require('@hapi/joi');
 
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
