@@ -9,7 +9,7 @@ exports.fetch = async (req, res) => {
 
     const merchant_id = req.authUser.merchant_id;
 
-    console.log(merchant_id);
+    // console.log(merchant_id);
 
     let count;
     let products;
