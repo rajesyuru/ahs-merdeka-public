@@ -5,7 +5,9 @@ const {jwtAuth} = require('../mwares/jwt-auth');
 
 const router = express.Router();
 
+router.use(jwtAuth);
+
 router.get('/', productController.fetch);
-router.post('/', jwtAuth, productController.add);
+router.post('/', productController.add);
 
 module.exports = router

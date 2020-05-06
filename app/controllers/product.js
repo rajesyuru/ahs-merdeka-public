@@ -7,24 +7,54 @@ exports.fetch = async (req, res) => {
     const search = req.query.search || '';
     const offset = (page - 1) * limit;
 
-    const count = await Product.count({
-        where: {
-            name: {
-                [Op.iLike]: `%${search}%`,
-            },
-        },
-    });
+    const merchant_id = req.authUser.merchant_id;
 
-    const products = await Product.findAll({
-        where: {
-            name: {
-                [Op.iLike]: `%${search}%`,
+    console.log(merchant_id);
+
+    let count;
+    let products;
+
+    if (merchant_id === null) {
+        count = await Product.count({
+            where: {
+                name: {
+                    [Op.iLike]: `%${search}%`,
+                },
             },
-        },
-        include: ['owner'],
-        limit: limit,
-        offset: offset,
-    });
+        });
+    
+        products = await Product.findAll({
+            where: {
+                name: {
+                    [Op.iLike]: `%${search}%`,
+                },
+            },
+            include: ['owner'],
+            limit: limit,
+            offset: offset,
+        });
+    } else {
+        count = await Product.count({
+            where: {
+                name: {
+                    [Op.iLike]: `%${search}%`,
+                },
+                merchant_id: merchant_id
+            },
+        });
+    
+        products = await Product.findAll({
+            where: {
+                name: {
+                    [Op.iLike]: `%${search}%`,
+                },
+                merchant_id: merchant_id
+            },
+            include: ['owner'],
+            limit: limit,
+            offset: offset,
+        });
+    }
 
     res.send({
         status: 'success',
@@ -52,6 +82,7 @@ exports.add = async (req, res) => {
     };
 
     const merchant_id = req.authUser.merchant_id;
+    const group_id = req.authUser.group_id;
 
     // console.log(merchant_id)
 
@@ -59,7 +90,15 @@ exports.add = async (req, res) => {
         return res.status(400)
             .send({
                 status: 'error',
-                message: 'Admin tidak dapat menambahkan produk'
+                message: 'Admin web tidak dapat menambahkan produk'
+            });
+    }
+
+    if (group_id !== 1) {
+        return res.status(403)
+            .send({
+                status: 'error',
+                message: 'Hanya admin merchant yang bisa menambahkan produk'
             });
     }
 
