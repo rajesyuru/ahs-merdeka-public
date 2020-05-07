@@ -1,6 +1,8 @@
 const {Product, Op} = require('../models');
 const Joi = require('@hapi/joi');
 
+const {canEdit}  = require('../permissions/product');
+
 exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
     const limit = req.query.limit * 1 || 20;
@@ -72,35 +74,16 @@ exports.add = async (req, res) => {
         image: Joi.string()
     });
 
+    const merchant_id = req.authUser.merchant_id;
+
     const {error} = schema.validate(req.body);
 
     if (error) {
-        res.status(400).send({
+        return res.status(400).send({
             status: 'error',
             message: error.message
         })
     };
-
-    const merchant_id = req.authUser.merchant_id;
-    const group_id = req.authUser.group_id;
-
-    // console.log(merchant_id)
-
-    if (!merchant_id) {
-        return res.status(400)
-            .send({
-                status: 'error',
-                message: 'Admin web tidak dapat menambahkan produk'
-            });
-    }
-
-    if (group_id !== 1) {
-        return res.status(403)
-            .send({
-                status: 'error',
-                message: 'Hanya admin merchant yang bisa menambahkan produk'
-            });
-    }
 
     const name = req.body.name;
     const price = req.body.price;
@@ -117,4 +100,49 @@ exports.add = async (req, res) => {
         status: 'success',
         data: data
     });
-}
+};
+
+exports.edit = async (req, res) => {
+    const product_id = req.params.product_id;
+
+    const product = await Product.findOne({
+        where: {
+            id: product_id,
+        }
+    });
+
+    if (!product) {
+        return res.status(400)
+            .send({
+                status: 'error',
+                message: 'Product not found'
+            });
+    }
+
+    const schema = Joi.object({
+        name: Joi.string().required(),
+        price: Joi.number().required()
+    });
+
+    const {error} = schema.validate(req.body);
+
+    if (error) {
+        return res.status(400)
+            .send({
+                status: 'error',
+                message: error.message
+            });
+    }
+
+    const name = req.body.name;
+    const price = req.body.price;
+
+    product.name = name;
+    product.price = price;
+    product.save();
+
+    res.send({
+        status: 'success',
+        data: product
+    });
+};

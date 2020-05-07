@@ -11,6 +11,22 @@ module.exports = {
       group_id: 1,
       created_at: new Date(),
       updated_at: new Date()
+    }, {
+      name: 'Rajes',
+      email: 'rajes@gmail.com',
+      password: bcrypt.hashSync('password', 8),
+      group_id: 1,
+      merchant_id: 1,
+      created_at: new Date(),
+      updated_at: new Date()
+    }, {
+      name: 'Rajes2',
+      email: 'rajes2@gmail.com',
+      password: bcrypt.hashSync('password2', 8),
+      group_id: 2,
+      merchant_id: 1,
+      created_at: new Date(),
+      updated_at: new Date()
     }])
     /*
       Add altering commands here.
