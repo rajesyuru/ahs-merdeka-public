@@ -19,7 +19,7 @@ const middlewareUserView = (req, res, next) => {
 };
 
 const middlewareEditUser = (req, res, next) => {
-    // console.log(req.authUser.id, req.params.user_id)
+    console.log(typeof req.authUser.id, typeof req.params.user_id)
     if (!canEditAll(req.authUser) && !canEditMember(req.authUser) && req.authUser.id != req.params.user_id) {
         return res.status(403)
             .send('Forbidden');

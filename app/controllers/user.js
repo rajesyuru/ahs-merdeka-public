@@ -175,9 +175,7 @@ exports.edit = async (req, res) => {
     user.email = email;
     user.password = bcrypt.hashSync(password, 8);
     user.group_id = group_id;
-    if (!currentMerchant) {
-        user.merchant_id = null;
-    } else {
+    if (user.merchant_id !== null) {
         user.merchant_id = merchant_id;
     }
     user.save();
