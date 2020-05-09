@@ -10,119 +10,43 @@ exports.users = async (req, res) => {
 
     const merchant_id = req.authUser.merchant_id;
 
-    // let count = await User.count({
-    //     where: {
-    //         name: {
-    //             [Op.iLike]: `%${search}%`,
-    //         },
-    //         [Op.any]: {
-    //             merchant_id
-    //         }
-    //     },
-    // });
-    // let users = await User.findAll({
-    //     attributes: [
-    //         'name',
-    //         'email',
-    //         'created_at',
-    //         'updated_at'
-    //     ],
-    //     where: {
-    //         name: {
-    //             [Op.iLike]: `%${search}%`,
-    //         },
-    //     },
-    //     include: ['group', 'merchant'],
-    //     order: [
-    //         ['created_at', 'asc']
-    //     ],
-    //     limit: limit,
-    //     offset: offset,
-    // });
-    // res.send({
-    //     status: 'success',
-    //     totalData: count,
-    //     totalPage: Math.ceil(count / limit),
-    //     page: page,
-    //     data: users
-    // });
+    let count = await User.count({
+        where: {
+            name: {
+                [Op.iLike]: `%${search}%`,
+            },
+            merchant_id: merchant_id || {[Op.or]: [{[Op.gt]: 0}, null]}
+        }
+    });
+    let users = await User.findAll({
+        attributes: [
+            'id',
+            'name',
+            'email',
+            'created_at',
+            'updated_at'
+        ],
+        where: {
+            name: {
+                [Op.iLike]: `%${search}%`,
+            },
+            merchant_id: merchant_id || {[Op.or]: [{[Op.gt]: 0}, null]}
+        },
+        include: ['group', 'merchant'],
+        order: [
+            ['created_at', 'asc']
+        ],
+        limit: limit,
+        offset: offset,
+    });
 
-    let count;
-    let users;
-
-    if (!merchant_id) {
-        count = await User.count({
-            where: {
-                name: {
-                    [Op.iLike]: `%${search}%`,
-                },
-            },
-        });
-        users = await User.findAll({
-            attributes: [
-                'name',
-                'email',
-                'created_at',
-                'updated_at'
-            ],
-            where: {
-                name: {
-                    [Op.iLike]: `%${search}%`,
-                },
-            },
-            include: ['group', 'merchant'],
-            order: [
-                ['created_at', 'asc']
-            ],
-            limit: limit,
-            offset: offset,
-        });
-        res.send({
-            status: 'success',
-            totalData: count,
-            totalPage: Math.ceil(count / limit),
-            page: page,
-            data: users
-        });
-    } else {
-        count = await User.count({
-            where: {
-                name: {
-                    [Op.iLike]: `%${search}%`,
-                },
-                merchant_id: merchant_id
-            },
-        });
-        users = await User.findAll({
-            attributes: [
-                'name',
-                'email',
-                'created_at',
-                'updated_at'
-            ],
-            where: {
-                name: {
-                    [Op.iLike]: `%${search}%`,
-                },
-                merchant_id: merchant_id
-            },
-            include: ['group'],
-            order: [
-                ['created_at', 'asc']
-            ],
-            limit: limit,
-            offset: offset,
-        });
-        const merchant = await Merchant.findByPk(merchant_id);
-        res.send({
-            status: 'success',
-            totalData: count,
-            totalPage: Math.ceil(count / limit),
-            page: page,
-            merchant: merchant,
-            data: users
-        });
-    };
+    res.send({
+        status: 'success',
+        totalData: count,
+        totalPage: Math.ceil(count / limit),
+        page: page,
+        data: users
+    });
 };
 
 exports.edit = async (req, res) => {
