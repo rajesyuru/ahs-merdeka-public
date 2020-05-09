@@ -1,6 +1,7 @@
 const {Op, User, Merchant} = require('../models');
 const Joi = require('@hapi/joi');
 const bcrypt = require('bcrypt');
+const {canEdit} = require('../permissions/user');
 
 exports.users = async (req, res) => {
     const page = req.query.page * 1 || 1;
@@ -51,11 +52,10 @@ exports.users = async (req, res) => {
 
 exports.edit = async (req, res) => {
     const schema = Joi.object({
-        name: Joi.string().required(),
-        email: Joi.string().required(),
-        password: Joi.string().required(),
-        group_id: Joi.number().integer().required(),
-        merchant_id: Joi.number().integer().required()
+        name: Joi.string(),
+        email: Joi.string(),
+        password: Joi.string(),
+        group_id: Joi.number().integer(),
     });
 
     const {error} = schema.validate(req.body);
@@ -67,17 +67,14 @@ exports.edit = async (req, res) => {
         })
     };
 
-    const name = req.body.name;
-    const email = req.body.email;
-    const password = req.body.password;
-    const group_id = req.body.group_id;
-    const merchant_id = req.body.merchant_id;
+    const name = req.body.name || '';
+    const email = req.body.email || '';
+    const password = req.body.password || '';
+    const group_id = req.body.group_id || 0;
 
     const id = req.params.user_id;
 
     const user = await User.findByPk(id);
-
-    const currentMerchant = req.authUser.merchant_id;
 
     // console.log(currentMerchant, user.merchant_id);
 
@@ -88,19 +85,22 @@ exports.edit = async (req, res) => {
         });
     };
 
-    if (currentMerchant !== null) {
-        if (currentMerchant !== user.merchant_id) {
-            return res.status(403)
-                .send('Forbidden');
-        };
-    };
+    if (!canEdit(req.authUser, user)) {
+        return res.status(403)
+            .send('Forbidden');
+    }
 
-    user.name = name;
-    user.email = email;
-    user.password = bcrypt.hashSync(password, 8);
-    user.group_id = group_id;
-    if (user.merchant_id !== null) {
-        user.merchant_id = merchant_id;
+    if (name.length > 0) {
+        user.name = name;
+    }
+    if (email.length > 0) {
+        user.email = email;
+    }
+    if (password.length > 0) {
+        user.password = bcrypt.hashSync(password, 8);
+    }
+    if (group_id > 0) {
+        user.group_id = group_id;
     }
     user.save();
 
