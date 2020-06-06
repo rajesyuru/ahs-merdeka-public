@@ -9,7 +9,7 @@ const productRouter = require('./product');
 
 const router = express.Router();
 
-router.use(cors)
+router.use(cors())
 
 router.use('/api/v1/master', masterRouter);
 router.use('/api/v1/auth', authRouter);
