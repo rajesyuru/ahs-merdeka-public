@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 
 const masterRouter = require('./master');
 const authRouter = require('./auth');
@@ -7,6 +8,8 @@ const usersRouter = require('./user');
 const productRouter = require('./product');
 
 const router = express.Router();
+
+router.use(cors)
 
 router.use('/api/v1/master', masterRouter);
 router.use('/api/v1/auth', authRouter);
