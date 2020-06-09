@@ -16,6 +16,8 @@ exports.fetch = async (req, res) => {
     let count;
     let products;
 
+    const prodSort = [['updated_at', 'asc']]
+
     if (merchant_id === null) {
         count = await Product.count({
             where: {
@@ -31,7 +33,7 @@ exports.fetch = async (req, res) => {
                     [Op.iLike]: `%${search}%`,
                 },
             },
-            order: [['created_at', 'asc']],
+            order: prodSort,
             include: ['owner'],
             limit: limit,
             offset: offset,
@@ -53,7 +55,7 @@ exports.fetch = async (req, res) => {
                 },
                 merchant_id: merchant_id,
             },
-            order: [['created_at', 'asc']],
+            order: prodSort,
             include: ['owner'],
             limit: limit,
             offset: offset,
