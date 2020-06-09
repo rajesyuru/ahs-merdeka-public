@@ -1,7 +1,7 @@
-const {Product, Op} = require('../models');
+const { Product, Op } = require('../models');
 const Joi = require('@hapi/joi');
 
-const {canEdit}  = require('../permissions/product');
+const { canEdit } = require('../permissions/product');
 
 exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
@@ -16,6 +16,8 @@ exports.fetch = async (req, res) => {
     let count;
     let products;
 
+    let prodSort = [['created_at', 'asc']];
+
     if (merchant_id === null) {
         count = await Product.count({
             where: {
@@ -24,13 +26,14 @@ exports.fetch = async (req, res) => {
                 },
             },
         });
-    
+
         products = await Product.findAll({
             where: {
                 name: {
                     [Op.iLike]: `%${search}%`,
                 },
             },
+            order: prodSort,
             include: ['owner'],
             limit: limit,
             offset: offset,
@@ -41,17 +44,18 @@ exports.fetch = async (req, res) => {
                 name: {
                     [Op.iLike]: `%${search}%`,
                 },
-                merchant_id: merchant_id
+                merchant_id: merchant_id,
             },
         });
-    
+
         products = await Product.findAll({
             where: {
                 name: {
                     [Op.iLike]: `%${search}%`,
                 },
-                merchant_id: merchant_id
+                merchant_id: merchant_id,
             },
+            order: prodSort,
             include: ['owner'],
             limit: limit,
             offset: offset,
@@ -71,19 +75,19 @@ exports.add = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().required(),
         price: Joi.number().required(),
-        image: Joi.string()
+        image: Joi.string(),
     });
 
     const merchant_id = req.authUser.merchant_id;
 
-    const {error} = schema.validate(req.body);
+    const { error } = schema.validate(req.body);
 
     if (error) {
         return res.status(400).send({
             status: 'error',
-            message: error.message
-        })
-    };
+            message: error.message,
+        });
+    }
 
     const name = req.body.name;
     const price = req.body.price;
@@ -93,12 +97,12 @@ exports.add = async (req, res) => {
         name,
         price,
         image,
-        merchant_id: merchant_id * 1
-    })
+        merchant_id: merchant_id * 1,
+    });
 
     res.send({
         status: 'success',
-        data: data
+        data: data,
     });
 };
 
@@ -108,30 +112,28 @@ exports.edit = async (req, res) => {
     const product = await Product.findOne({
         where: {
             id: product_id,
-        }
+        },
     });
 
     if (!product) {
-        return res.status(400)
-            .send({
-                status: 'error',
-                message: 'Product not found'
-            });
+        return res.status(400).send({
+            status: 'error',
+            message: 'Product not found',
+        });
     }
 
     const schema = Joi.object({
         name: Joi.string().required(),
-        price: Joi.number().required()
+        price: Joi.number().required(),
     });
 
-    const {error} = schema.validate(req.body);
+    const { error } = schema.validate(req.body);
 
     if (error) {
-        return res.status(400)
-            .send({
-                status: 'error',
-                message: error.message
-            });
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
     }
 
     const name = req.body.name;
@@ -143,6 +145,6 @@ exports.edit = async (req, res) => {
 
     res.send({
         status: 'success',
-        data: product
+        data: product,
     });
 };
