@@ -16,7 +16,7 @@ exports.fetch = async (req, res) => {
     let count;
     let products;
 
-    const prodSort = [['updated_at', 'asc']]
+    const prodSort = [['updated_at', 'desc']]
 
     if (merchant_id === null) {
         count = await Product.count({
