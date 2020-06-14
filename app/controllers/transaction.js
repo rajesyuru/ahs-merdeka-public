@@ -43,6 +43,7 @@ exports.fetch = async (req, res) => {
                       [Op.gt]: 0,
                   },
         },
+        include: ['product'],
         order: sort,
         limit: limit,
         offset: offset,
