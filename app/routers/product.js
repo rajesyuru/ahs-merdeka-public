@@ -3,7 +3,7 @@ const express = require('express');
 const productController = require('../controllers/product');
 const {jwtAuth} = require('../mwares/jwt-auth');
 
-const {canView, canAdd} = require('../permissions/product');
+const {canView, canAdd, canEdit} = require('../permissions/product');
 
 const router = express.Router();
 

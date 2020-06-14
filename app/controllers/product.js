@@ -75,6 +75,7 @@ exports.add = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().required(),
         price: Joi.number().required(),
+        buying_price: Joi.number().required(),
         image: Joi.string(),
     });
 
@@ -91,6 +92,7 @@ exports.add = async (req, res) => {
 
     const name = req.body.name;
     const price = req.body.price;
+    const buying_price = req.body.buying_price;
     const image = req.body.image || '';
 
     const data = await Product.create({
@@ -98,6 +100,7 @@ exports.add = async (req, res) => {
         price,
         image,
         merchant_id: merchant_id * 1,
+        buying_price
     });
 
     res.send({
@@ -125,6 +128,8 @@ exports.edit = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().required(),
         price: Joi.number().required(),
+        buying_price: Joi.number().required(),
+        image: Joi.string(),
     });
 
     const { error } = schema.validate(req.body);
@@ -138,9 +143,15 @@ exports.edit = async (req, res) => {
 
     const name = req.body.name;
     const price = req.body.price;
+    const buying_price = req.body.buying_price;
+    const image = req.body.image || "";
 
     product.name = name;
     product.price = price;
+    product.buying_price = buying_price;
+    if (image.length > 0) {
+        product.image = image;
+    };
     product.save();
 
     res.send({

@@ -1,4 +1,4 @@
-const {Merchant, Op} = require('../models');
+const { Merchant, Op } = require('../models');
 
 exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
@@ -31,10 +31,25 @@ exports.fetch = async (req, res) => {
         page: page,
         data: merchants,
     });
-}
+};
 
 exports.add = async (req, res) => {
     const name = req.body.name;
+
+    const findMerchants = await Merchant.findAll({
+        where: {
+            name: {
+                [Op.iLike]: `%${name}%`,
+            },
+        },
+    });
+
+    if (findMerchants) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Merchant already exists',
+        });
+    }
 
     const merchant = await Merchant.create({
         name: name,
@@ -42,6 +57,6 @@ exports.add = async (req, res) => {
 
     res.send({
         status: 'success',
-        data: merchant
+        data: merchant,
     });
-}
+};
