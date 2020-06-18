@@ -29,6 +29,6 @@ const middlewareCanDelete = (req, res, next) => {
 router.get('/', middlewareCanView, transactionController.fetch);
 router.post('/', transactionController.add);
 router.put('/:id(\\d+)', transactionController.edit);
-router.delete('/', middlewareCanDelete, transactionController.delete);
+router.put('/', middlewareCanDelete, transactionController.delete);
 
 module.exports = router;
