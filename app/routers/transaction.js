@@ -2,7 +2,7 @@ const express = require('express');
 
 const transactionController = require('../controllers/transaction');
 const { jwtAuth } = require('../mwares/jwt-auth');
-const { canView, canAdd } = require('../permissions/transaction');
+const { canView, canDelete } = require('../permissions/transaction');
 
 const router = express.Router();
 
@@ -17,8 +17,18 @@ const middlewareCanView = (req, res, next) => {
     next();
 };
 
+const middlewareCanDelete = (req, res, next) => {
+    if (!canDelete(req.authUser)) {
+        res.status(403);
+        return res.send('Forbidden');
+    }
+
+    next();
+}
+
 router.get('/', middlewareCanView, transactionController.fetch);
 router.post('/', transactionController.add);
 router.put('/:id(\\d+)', transactionController.edit);
+router.delete('/', middlewareCanDelete, transactionController.delete);
 
 module.exports = router;

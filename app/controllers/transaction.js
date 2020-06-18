@@ -178,3 +178,75 @@ exports.edit = async (req, res) => {
         data: transaction,
     });
 };
+
+exports.delete = async (req, res) => {
+    const schema = Joi.object({
+        ids: Joi.array().items(Joi.number().integer()).required(),
+    });
+
+    const { error } = schema.validate(req.body);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const ids = req.body.ids;
+
+    if (!ids.length > 0) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'No selected transactions',
+        });
+    }
+
+    const products = await Product.findAll({
+        where: {
+            merchant_id: req.authUser.merchant_id,
+        },
+    });
+
+    if (!products.length > 0) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'No products found',
+        });
+    }
+
+    const ownedProducts = products.map((product) => product.id);
+
+    const transactions = await Transaction.findAll({
+        where: {
+            product_id: {
+                [Op.or]: ownedProducts,
+            },
+            id: {
+                [Op.or]: ids,
+            },
+        },
+    });
+
+    if (!transactions.length > 0) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'No transactions found'
+        })
+    }
+
+    await Transaction.destroy({
+        where: {
+            product_id: {
+                [Op.or]: ownedProducts,
+            },
+            id: {
+                [Op.or]: ids,
+            },
+        },
+    });
+
+    res.send({
+        status: 'success',
+    });
+};
