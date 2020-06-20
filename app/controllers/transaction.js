@@ -62,7 +62,9 @@ exports.add = async (req, res) => {
     const schema = Joi.object({
         date: Joi.date().format('YYYY-MM-DD').required(),
         product_id: Joi.number().required(),
+        type: Joi.string().required(),
         quantity: Joi.number().required(),
+        info: Joi.string(),
     });
 
     const { error } = schema.validate(req.body);
@@ -76,7 +78,9 @@ exports.add = async (req, res) => {
 
     const date = req.body.date;
     const id = req.body.product_id;
+    const type = req.body.type;
     const quantity = req.body.quantity;
+    const info = req.body.info;
 
     const merchant_id = req.authUser.merchant_id;
 
@@ -104,6 +108,8 @@ exports.add = async (req, res) => {
         quantity,
         price: product.price,
         buying_price: product.buying_price,
+        type,
+        info,
     });
 
     res.send({
@@ -127,7 +133,9 @@ exports.edit = async (req, res) => {
     const schema = Joi.object({
         date: Joi.date().format('YYYY-MM-DD'),
         product_id: Joi.number(),
+        type: Joi.string(),
         quantity: Joi.number().integer(),
+        info: Joi.string(),
     });
 
     const { error } = schema.validate(req.body);
@@ -141,7 +149,9 @@ exports.edit = async (req, res) => {
 
     const date = req.body.date;
     const product_id = req.body.product_id || transaction.product_id;
+    const type = req.body.type;
     const quantity = req.body.quantity;
+    const info = req.body.info;
 
     const product = await Product.findOne({
         where: {
@@ -169,6 +179,14 @@ exports.edit = async (req, res) => {
     transaction.product_id = product_id;
     if (quantity) {
         transaction.quantity = quantity;
+    }
+
+    if (type) {
+        transaction.type = type;
+    }
+
+    if (info) {
+        transaction.info = info;
     }
 
     transaction.save();
@@ -231,8 +249,8 @@ exports.delete = async (req, res) => {
     if (!transactions.length > 0) {
         return res.status(400).send({
             status: 'error',
-            message: 'No transactions found'
-        })
+            message: 'No transactions found',
+        });
     }
 
     await Transaction.destroy({
