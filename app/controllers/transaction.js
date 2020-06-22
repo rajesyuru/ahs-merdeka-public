@@ -3,11 +3,10 @@ const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { canAddEdit } = require('../permissions/transaction');
 
 exports.fetch = async (req, res) => {
-    const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
-    const offset = (page - 1) * limit;
-
     const schema = Joi.object({
+        page: Joi.number(),
+        limit: Joi.number(),
+        offset: Joi.number(),
         id: Joi.number(),
         date: Joi.date().format('YYYY-MM-DD'),
         product_id: Joi.number(),
@@ -24,6 +23,9 @@ exports.fetch = async (req, res) => {
         });
     }
 
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 20;
+    const offset = (page - 1) * limit;
     const idSearch = req.query.id * 1 || null;
     const dateSearch = req.query.date;
     const productSearch = req.query.product_id * 1 || null;
