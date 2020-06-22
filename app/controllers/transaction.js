@@ -185,7 +185,7 @@ exports.edit = async (req, res) => {
         product_id: Joi.number(),
         type: Joi.string(),
         quantity: Joi.number().integer(),
-        info: Joi.string().allow(null)
+        info: Joi.string().allow(null),
     });
 
     const { error } = schema.validate(req.body);
@@ -230,14 +230,10 @@ exports.edit = async (req, res) => {
     if (quantity) {
         transaction.quantity = quantity;
     }
-
     if (type) {
         transaction.type = type;
     }
-
-    if (info) {
-        transaction.info = info;
-    }
+    transaction.info = info;
 
     transaction.save();
 
