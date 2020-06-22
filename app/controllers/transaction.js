@@ -6,7 +6,6 @@ exports.fetch = async (req, res) => {
     const schema = Joi.object({
         page: Joi.number(),
         limit: Joi.number(),
-        offset: Joi.number(),
         id: Joi.number(),
         date: Joi.date().format('YYYY-MM-DD'),
         product_id: Joi.number(),
