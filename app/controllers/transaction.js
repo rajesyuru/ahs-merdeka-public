@@ -5,9 +5,30 @@ const { canAddEdit } = require('../permissions/transaction');
 exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
     const limit = req.query.limit * 1 || 20;
-    const dateSearch = req.query.date;
-    const productSearch = req.query.productId;
     const offset = (page - 1) * limit;
+
+    const schema = Joi.object({
+        id: Joi.number(),
+        date: Joi.date().format('YYYY-MM-DD'),
+        product_id: Joi.number(),
+        type: Joi.string(),
+        info: Joi.string(),
+    });
+
+    const { error } = schema.validate(req.query);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const idSearch = req.query.id * 1 || null;
+    const dateSearch = req.query.date;
+    const productSearch = req.query.product_id * 1 || null;
+    const typeSearch = req.query.search;
+    const infoSearch = req.query.info || '';
 
     const merchant_id = req.authUser.merchant_id;
 
@@ -28,6 +49,13 @@ exports.fetch = async (req, res) => {
 
     const { count, rows } = await Transaction.findAndCountAll({
         where: {
+            id: idSearch
+                ? {
+                      [Op.eq]: idSearch,
+                  }
+                : {
+                      [Op.not]: null,
+                  },
             date: dateSearch
                 ? {
                       [Op.iLike]: `%${dateSearch}%`,
@@ -35,12 +63,33 @@ exports.fetch = async (req, res) => {
                 : {
                       [Op.not]: null,
                   },
-            product_id: merchant_id
+            product_id: productSearch
                 ? {
-                      [Op.or]: ownedProductsId,
+                      [Op.eq]: productSearch,
+                  }
+                : merchant_id
+                ? {
+                      [Op.in]: ownedProductsId,
                   }
                 : {
                       [Op.gt]: 0,
+                  },
+            type: typeSearch
+                ? {
+                      [Op.iLike]: `%${typeSearch}%`,
+                  }
+                : {
+                      [Op.not]: null,
+                  },
+            info: infoSearch
+                ? {
+                      [Op.iLike]: `%${infoSearch}%`,
+                  }
+                : {
+                      [Op.or]: {
+                          [Op.iLike]: `%${infoSearch}%`,
+                          [Op.is]: null,
+                      },
                   },
         },
         include: ['product'],
