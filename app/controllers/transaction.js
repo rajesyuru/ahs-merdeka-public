@@ -114,7 +114,7 @@ exports.add = async (req, res) => {
         product_id: Joi.number().required(),
         type: Joi.string().required(),
         quantity: Joi.number().required(),
-        info: Joi.string(),
+        info: Joi.string().allow(null),
     });
 
     const { error } = schema.validate(req.body);
