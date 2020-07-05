@@ -314,3 +314,57 @@ exports.delete = async (req, res) => {
         status: 'success',
     });
 };
+
+exports.fetchStocks = async (req, res) => {
+    const schema = Joi.object({
+        product_id: Joi.number().required(),
+    });
+
+    const { error } = schema.validate(req.query);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const id = req.query.product_id;
+
+    const product = await Product.findOne({
+        where: {
+            id,
+            merchant_id: req.authUser.merchant_id,
+        },
+    });
+
+    if (!product) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Product not found',
+        });
+    }
+
+    const buys = await Transaction.findAll({
+        where: {
+            product_id: id,
+            type: 'buy',
+        },
+    });
+
+    const sells = await Transaction.findAll({
+        where: {
+            product_id: id,
+            type: 'sell',
+        },
+    });
+
+    const buysSum = buys.map((buy) => buy.quantity).reduce((a, b) => a + b, 0)
+    const sellsSum = sells.map((sell) => sell.quantity).reduce((a, b) => a + b, 0)
+
+    res.send({
+        status: 'success',
+        product,
+        stocks: buysSum - sellsSum
+    });
+};

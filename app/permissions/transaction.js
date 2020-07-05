@@ -9,3 +9,7 @@ exports.canAddEdit = (user, product) => {
 exports.canDelete = (user) => {
     return user.merchant_id !== null && user.group_id === 1;
 };
+
+exports.canFetchStocks = (user) => {
+    return user.merchant_id !== null && user.group_id === 1;
+}
