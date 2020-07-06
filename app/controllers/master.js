@@ -1,4 +1,4 @@
-const {Group, Op} = require('../models');
+const { Group, Op } = require('../models');
 
 exports.groups = async (req, res) => {
     const page = req.query.page * 1 || 1;

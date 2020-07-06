@@ -1,7 +1,7 @@
-const {Op, User, Merchant} = require('../models');
+const { Op, User, Merchant } = require('../models');
 const Joi = require('@hapi/joi');
 const bcrypt = require('bcrypt');
-const {canEdit} = require('../permissions/user');
+const { canEdit } = require('../permissions/user');
 
 exports.users = async (req, res) => {
     const page = req.query.page * 1 || 1;
@@ -16,27 +16,19 @@ exports.users = async (req, res) => {
             name: {
                 [Op.iLike]: `%${search}%`,
             },
-            merchant_id: merchant_id || {[Op.or]: [{[Op.gt]: 0}, null]}
-        }
+            merchant_id: merchant_id || { [Op.or]: [{ [Op.gt]: 0 }, null] },
+        },
     });
     let users = await User.findAll({
-        attributes: [
-            'id',
-            'name',
-            'email',
-            'created_at',
-            'updated_at'
-        ],
+        attributes: ['id', 'name', 'email', 'created_at', 'updated_at'],
         where: {
             name: {
                 [Op.iLike]: `%${search}%`,
             },
-            merchant_id: merchant_id || {[Op.or]: [{[Op.gt]: 0}, null]}
+            merchant_id: merchant_id || { [Op.or]: [{ [Op.gt]: 0 }, null] },
         },
         include: ['group', 'merchant'],
-        order: [
-            ['created_at', 'asc']
-        ],
+        order: [['created_at', 'asc']],
         limit: limit,
         offset: offset,
     });
@@ -46,7 +38,7 @@ exports.users = async (req, res) => {
         totalData: count,
         totalPage: Math.ceil(count / limit),
         page: page,
-        data: users
+        data: users,
     });
 };
 
@@ -58,14 +50,14 @@ exports.edit = async (req, res) => {
         group_id: Joi.number().integer(),
     });
 
-    const {error} = schema.validate(req.body);
+    const { error } = schema.validate(req.body);
 
     if (error) {
         return res.status(400).send({
             status: 'error',
-            message: error.message
-        })
-    };
+            message: error.message,
+        });
+    }
 
     const name = req.body.name || '';
     const email = req.body.email || '';
@@ -81,13 +73,12 @@ exports.edit = async (req, res) => {
     if (!user) {
         return res.status(400).send({
             status: 'error',
-            message: 'User not found'
+            message: 'User not found',
         });
-    };
+    }
 
     if (!canEdit(req.authUser, user)) {
-        return res.status(403)
-            .send('Forbidden');
+        return res.status(403).send('Forbidden');
     }
 
     if (name.length > 0) {
@@ -112,5 +103,5 @@ exports.edit = async (req, res) => {
             group_id: user.group_id,
             merchant_id: user.merchant_id,
         },
-    })
-}
+    });
+};

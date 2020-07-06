@@ -7,7 +7,6 @@ module.exports = (sequelize, DataTypes) => {
     updatedAt: 'updated_at'
   });
   Merchant.associate = function(models) {
-    // associations can be defined here
   };
   return Merchant;
 };

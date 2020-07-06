@@ -17,6 +17,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'product_id',
       as: 'product',
     });
+
+    models.Transaction.belongsTo(models.Customer, {
+      foreignKey: 'customer_id',
+      as: 'customer',
+    });
   };
   return Transaction;
 };

@@ -39,7 +39,7 @@ exports.add = async (req, res) => {
     const findMerchants = await Merchant.findOne({
         where: {
             name: {
-                [Op.iLike]: `%${name}%`
+                [Op.iLike]: `%${name}%`,
             },
         },
     });

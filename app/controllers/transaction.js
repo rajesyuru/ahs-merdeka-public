@@ -1,4 +1,4 @@
-const { Transaction, Op, Product } = require('../models');
+const { Transaction, Op, Product, Customer } = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { canAddEdit } = require('../permissions/transaction');
 
@@ -115,6 +115,7 @@ exports.add = async (req, res) => {
         type: Joi.string().required(),
         quantity: Joi.number().required(),
         info: Joi.string().allow(null),
+        customer_id: Joi.number().required(),
     });
 
     const { error } = schema.validate(req.body);
@@ -131,10 +132,23 @@ exports.add = async (req, res) => {
     const type = req.body.type;
     const quantity = req.body.quantity;
     const info = req.body.info;
+    const customer_id = req.body.customer_id;
 
-    const merchant_id = req.authUser.merchant_id;
+    const customer = await Customer.findByPk(customer_id);
 
-    const product = await Product.findByPk(id);
+    if (!customer) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Customer not found',
+        });
+    }
+
+    const product = await Product.findOne({
+        where: {
+            id,
+            merchant_id: req.authUser.merchant_id,
+        },
+    });
 
     if (!product) {
         return res.status(400).send({
@@ -160,6 +174,7 @@ exports.add = async (req, res) => {
         buying_price: product.buying_price,
         type,
         info,
+        customer_id,
     });
 
     res.send({
@@ -186,6 +201,7 @@ exports.edit = async (req, res) => {
         type: Joi.string(),
         quantity: Joi.number().integer(),
         info: Joi.string().allow(null),
+        customer_id: Joi.number(),
     });
 
     const { error } = schema.validate(req.body);
@@ -202,6 +218,16 @@ exports.edit = async (req, res) => {
     const type = req.body.type;
     const quantity = req.body.quantity;
     const info = req.body.info;
+    const customer_id = req.body.customer_id;
+
+    const customer = await Customer.findByPk(customer_id);
+
+    if (!customer) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Customer not found',
+        });
+    }
 
     const product = await Product.findOne({
         where: {
@@ -234,6 +260,9 @@ exports.edit = async (req, res) => {
         transaction.type = type;
     }
     transaction.info = info;
+    if (customer_id) {
+        transaction.customer_id = customer_id;
+    }
 
     transaction.save();
 
@@ -316,55 +345,59 @@ exports.delete = async (req, res) => {
 };
 
 exports.fetchStocks = async (req, res) => {
-    const schema = Joi.object({
-        product_id: Joi.number().required(),
-    });
+    const merchant_id = req.authUser.merchant_id;
 
-    const { error } = schema.validate(req.query);
-
-    if (error) {
-        return res.status(400).send({
-            status: 'error',
-            message: error.message,
-        });
-    }
-
-    const id = req.query.product_id;
-
-    const product = await Product.findOne({
+    const products = await Product.findAll({
         where: {
-            id,
-            merchant_id: req.authUser.merchant_id,
+            merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
         },
     });
 
-    if (!product) {
+    if (!products > 0) {
         return res.status(400).send({
             status: 'error',
             message: 'Product not found',
         });
     }
 
-    const buys = await Transaction.findAll({
-        where: {
+    let data = [];
+
+    products.forEach(async ({ id, name, price, buying_price, merchant_id }) => {
+        const buys = await Transaction.findAll({
+            where: {
+                product_id: id,
+                type: 'buy',
+            },
+        });
+
+        const sells = await Transaction.findAll({
+            where: {
+                product_id: id,
+                type: 'sell',
+            },
+        });
+
+        const buysSum = buys
+            .map((buy) => buy.quantity)
+            .reduce((a, b) => a + b, 0);
+        const sellsSum = sells
+            .map((sell) => sell.quantity)
+            .reduce((a, b) => a + b, 0);
+
+        data.push({
             product_id: id,
-            type: 'buy',
-        },
-    });
+            name: name,
+            price: price,
+            buying_price: buying_price,
+            merchant_id: merchant_id,
+            stock: buysSum - sellsSum,
+        });
 
-    const sells = await Transaction.findAll({
-        where: {
-            product_id: id,
-            type: 'sell',
-        },
-    });
-
-    const buysSum = buys.map((buy) => buy.quantity).reduce((a, b) => a + b, 0)
-    const sellsSum = sells.map((sell) => sell.quantity).reduce((a, b) => a + b, 0)
-
-    res.send({
-        status: 'success',
-        product,
-        stocks: buysSum - sellsSum
+        if (data.length === products.length) {
+            return res.send({
+                status: 'success',
+                data,
+            });
+        }
     });
 };
