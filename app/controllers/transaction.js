@@ -265,7 +265,7 @@ exports.edit = async (req, res) => {
         if (!canEdit(req.authUser, customer)) {
             return res.status(403).send('Forbidden');
         }
-        
+
         transaction.customer_id = customer_id;
     }
 
