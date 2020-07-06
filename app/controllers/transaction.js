@@ -1,6 +1,7 @@
 const { Transaction, Op, Product, Customer } = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { canAddEdit } = require('../permissions/transaction');
+const { canEdit } = require('../permissions/customer');
 
 exports.fetch = async (req, res) => {
     const schema = Joi.object({
@@ -220,15 +221,6 @@ exports.edit = async (req, res) => {
     const info = req.body.info;
     const customer_id = req.body.customer_id;
 
-    const customer = await Customer.findByPk(customer_id);
-
-    if (!customer) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'Customer not found',
-        });
-    }
-
     const product = await Product.findOne({
         where: {
             id: product_id,
@@ -261,6 +253,19 @@ exports.edit = async (req, res) => {
     }
     transaction.info = info;
     if (customer_id) {
+        const customer = await Customer.findByPk(customer_id);
+
+        if (!customer) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Customer not found',
+            });
+        }
+
+        if (!canEdit(req.authUser, customer)) {
+            return res.status(403).send('Forbidden');
+        }
+        
         transaction.customer_id = customer_id;
     }
 

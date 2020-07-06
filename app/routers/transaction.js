@@ -38,6 +38,7 @@ const middlewareCanFetchStocks = (req, res, next) => {
 router.get('/', middlewareCanView, transactionController.fetch);
 router.post('/', transactionController.add);
 router.put('/:id(\\d+)', transactionController.edit);
+router.put('/', transactionController.delete);
 router.get('/stocks', middlewareCanFetchStocks, transactionController.fetchStocks);
 
 module.exports = router;
