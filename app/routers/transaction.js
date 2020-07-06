@@ -26,19 +26,9 @@ const middlewareCanDelete = (req, res, next) => {
     next();
 }
 
-const middlewareCanFetchStocks = (req, res, next) => {
-    if (!canFetchStocks(req.authUser)) {
-        res.status(403);
-        return res.send('Forbidden');
-    }
-
-    next();
-}
-
 router.get('/', middlewareCanView, transactionController.fetch);
 router.post('/', transactionController.add);
 router.put('/:id(\\d+)', transactionController.edit);
 router.put('/', transactionController.delete);
-router.get('/stocks', middlewareCanFetchStocks, transactionController.fetchStocks);
 
 module.exports = router;

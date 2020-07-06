@@ -1,4 +1,4 @@
-const { Product, Op } = require('../models');
+const { Product, Op, Transaction } = require('../models');
 const Joi = require('@hapi/joi');
 
 const { canEdit } = require('../permissions/product');
@@ -148,5 +148,63 @@ exports.edit = async (req, res) => {
     res.send({
         status: 'success',
         data: product,
+    });
+};
+
+exports.fetchStocks = async (req, res) => {
+    const merchant_id = req.authUser.merchant_id;
+
+    const products = await Product.findAll({
+        where: {
+            merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
+        },
+    });
+
+    if (!products > 0) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Product not found',
+        });
+    }
+
+    let data = [];
+
+    products.forEach(async ({ id, name, price, buying_price, merchant_id }) => {
+        const buys = await Transaction.findAll({
+            where: {
+                product_id: id,
+                type: 'buy',
+            },
+        });
+
+        const sells = await Transaction.findAll({
+            where: {
+                product_id: id,
+                type: 'sell',
+            },
+        });
+
+        const buysSum = buys
+            .map((buy) => buy.quantity)
+            .reduce((a, b) => a + b, 0);
+        const sellsSum = sells
+            .map((sell) => sell.quantity)
+            .reduce((a, b) => a + b, 0);
+
+        data.push({
+            product_id: id,
+            name: name,
+            price: price,
+            buying_price: buying_price,
+            merchant_id: merchant_id,
+            stock: buysSum - sellsSum,
+        });
+
+        if (data.length === products.length) {
+            return res.send({
+                status: 'success',
+                data,
+            });
+        }
     });
 };
