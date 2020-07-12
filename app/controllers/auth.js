@@ -57,9 +57,9 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
     const payload = req.authUser;
+    console.log(req);
     delete payload.exp;
     delete payload.iat;
-    console.log(process.env.TOKEN_LIFE_TIME);
     const token = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: process.env.TOKEN_LIFE_TIME * 1,
     });

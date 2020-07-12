@@ -23,8 +23,8 @@ exports.fetch = async (req, res) => {
         });
     }
 
-    const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
+    const page = req.query.page * 1 || 1; 
+    const limit = req.query.limit * 1 || 2147483647;
     const offset = (page - 1) * limit;
     const idSearch = req.query.id * 1 || null;
     const dateSearch = req.query.date;
@@ -116,7 +116,7 @@ exports.add = async (req, res) => {
         type: Joi.string().required(),
         quantity: Joi.number().required(),
         info: Joi.string().allow(null),
-        customer_id: Joi.number().required(),
+        customer_id: Joi.number().allow(null),
     });
 
     const { error } = schema.validate(req.body);
@@ -135,13 +135,27 @@ exports.add = async (req, res) => {
     const info = req.body.info;
     const customer_id = req.body.customer_id;
 
-    const customer = await Customer.findByPk(customer_id);
-
-    if (!customer) {
+    if (type === 'sell' && !customer_id) {
         return res.status(400).send({
             status: 'error',
-            message: 'Customer not found',
+            message: 'customer_id is required if the type is sell',
         });
+    } else if (type === 'buy' && customer_id) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'customer_id is not required if the type is buy',
+        });
+    }
+
+    if (customer_id) {
+        const customer = await Customer.findByPk(customer_id);
+
+        if (!customer) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Customer not found',
+            });
+        }
     }
 
     const product = await Product.findOne({
@@ -202,7 +216,7 @@ exports.edit = async (req, res) => {
         type: Joi.string(),
         quantity: Joi.number().integer(),
         info: Joi.string().allow(null),
-        customer_id: Joi.number(),
+        customer_id: Joi.number().allow(null)
     });
 
     const { error } = schema.validate(req.body);
@@ -252,6 +266,17 @@ exports.edit = async (req, res) => {
         transaction.type = type;
     }
     transaction.info = info;
+    if (type === 'sell' && !customer_id) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'customer_id is required if the type is sell',
+        });
+    } else if (type === 'buy' && customer_id) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'customer_id is not required if the type is buy',
+        });
+    }
     if (customer_id) {
         const customer = await Customer.findByPk(customer_id);
 
@@ -265,9 +290,9 @@ exports.edit = async (req, res) => {
         if (!canEdit(req.authUser, customer)) {
             return res.status(403).send('Forbidden');
         }
-
-        transaction.customer_id = customer_id;
     }
+
+    transaction.customer_id = customer_id;
 
     transaction.save();
 
