@@ -7,7 +7,8 @@ exports.fetch = async (req, res) => {
     const schema = Joi.object({
         page: Joi.number(),
         limit: Joi.number(),
-        name: Joi.string()
+        name: Joi.string(),
+        id: Joi.number()
     });
 
     const { error } = schema.validate(req.query);
@@ -22,6 +23,7 @@ exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
     const limit = req.query.limit * 1 || 20;
     const name = req.query.name || '';
+    const id = req.query.id;
     const offset = (page - 1) * limit;
 
     const merchant_id = req.authUser.merchant_id;
@@ -31,7 +33,8 @@ exports.fetch = async (req, res) => {
             merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
             name: {
                 [Op.iLike]: `%${name}%`
-            }
+            },
+            id: id ? id : { [Op.not]: null }
         },
         order: [['updated_at', 'desc']],
         limit: limit,
@@ -50,7 +53,7 @@ exports.fetch = async (req, res) => {
 exports.add = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().required().min(2),
-        email: Joi.string().email(),
+        email: Joi.string().email().allow(null),
         phone: Joi.string().required(),
         address: Joi.string().required(),
     });
@@ -115,7 +118,7 @@ exports.add = async (req, res) => {
 exports.edit = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().min(2),
-        email: Joi.string().email(),
+        email: Joi.string().email().allow(null),
         phone: Joi.string(),
         address: Joi.string(),
     });

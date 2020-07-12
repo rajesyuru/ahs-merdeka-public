@@ -94,7 +94,7 @@ exports.fetch = async (req, res) => {
                       },
                   },
         },
-        include: ['product'],
+        include: ['product', 'customer'],
         order: sort,
         limit: limit,
         offset: offset,
