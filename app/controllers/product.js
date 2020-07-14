@@ -101,6 +101,22 @@ exports.add = async (req, res) => {
 };
 
 exports.edit = async (req, res) => {
+    const schema = Joi.object({
+        name: Joi.string(),
+        price: Joi.number(),
+        buying_price: Joi.number(),
+        image: Joi.string(),
+    });
+
+    const { error } = schema.validate(req.body);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
     const product_id = req.params.product_id;
 
     const product = await Product.findOne({
@@ -116,31 +132,25 @@ exports.edit = async (req, res) => {
         });
     }
 
-    const schema = Joi.object({
-        name: Joi.string().required(),
-        price: Joi.number().required(),
-        buying_price: Joi.number().required(),
-        image: Joi.string(),
-    });
-
-    const { error } = schema.validate(req.body);
-
-    if (error) {
-        return res.status(400).send({
-            status: 'error',
-            message: error.message,
-        });
+    if (!canEdit(req.authUser, product)) {
+        return res.status(403).send('Forbidden')
     }
 
     const name = req.body.name;
     const price = req.body.price;
     const buying_price = req.body.buying_price;
-    const image = req.body.image || '';
+    const image = req.body.image;
 
-    product.name = name;
-    product.price = price;
-    product.buying_price = buying_price;
-    if (image.length > 0) {
+    if (name) {
+        product.name = name;
+    }
+    if (price) {
+        product.price = price;
+    }
+    if (buying_price) {
+        product.buying_price = buying_price;
+    }
+    if (image) {
         product.image = image;
     }
     product.save();
@@ -208,3 +218,27 @@ exports.fetchStocks = async (req, res) => {
         }
     });
 };
+
+exports.delete = async (req, res) => {
+    const product_id = req.params.product_id;
+
+    const product = await Product.findByPk(product_id)
+
+    if (!product) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Product not found',
+        });
+    }
+
+    if (!canEdit(req.authUser, product)) {
+        return res.status(403).send('Forbidden')
+    }
+
+    product.destroy();
+
+    res.send({
+        status: 'success',
+        data: product
+    })
+}

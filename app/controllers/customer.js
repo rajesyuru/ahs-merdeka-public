@@ -5,8 +5,8 @@ const { canEdit } = require('../permissions/customer');
 
 exports.fetch = async (req, res) => {
     const schema = Joi.object({
-        page: Joi.number(),
-        limit: Joi.number(),
+        page: Joi.number().integer(),
+        limit: Joi.number().integer(),
         name: Joi.string(),
         id: Joi.number()
     });

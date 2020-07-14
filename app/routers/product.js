@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use(jwtAuth);
 
-const middlewareCanAddEdit = (req, res, next) => {
+const middlewareCanAdd = (req, res, next) => {
     if (!canAdd(req.authUser)) {
         res.status(403);
         return res.send('Forbidden');
@@ -37,8 +37,9 @@ const middlewareCanFetchStocks = (req, res, next) => {
 }
 
 router.get('/', middlewareCanView, productController.fetch);
-router.post('/', middlewareCanAddEdit, productController.add);
-router.put('/:product_id(\\d+)', middlewareCanAddEdit, productController.edit);
-router.get('/stocks', middlewareCanFetchStocks, productController.fetchStocks)
+router.post('/', middlewareCanAdd, productController.add);
+router.put('/:product_id(\\d+)', productController.edit);
+router.get('/stocks', middlewareCanFetchStocks, productController.fetchStocks);
+router.delete('/:product_id(\\d+)', productController.delete)
 
 module.exports = router

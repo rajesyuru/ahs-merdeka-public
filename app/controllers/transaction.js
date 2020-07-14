@@ -1,6 +1,6 @@
 const { Transaction, Op, Product, Customer } = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
-const { canAddEdit } = require('../permissions/transaction');
+const { canAddEdit, canDelete } = require('../permissions/transaction');
 const { canEdit } = require('../permissions/customer');
 
 exports.fetch = async (req, res) => {
@@ -303,73 +303,30 @@ exports.edit = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
-    const schema = Joi.object({
-        ids: Joi.array().items(Joi.number().integer()).required(),
-    });
+    const id = req.params.transaction_id;
 
-    const { error } = schema.validate(req.body);
-
-    if (error) {
-        return res.status(400).send({
-            status: 'error',
-            message: error.message,
-        });
-    }
-
-    const ids = req.body.ids;
-
-    if (!ids.length > 0) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'No selected transactions',
-        });
-    }
-
-    const products = await Product.findAll({
+    const transaction = await Transaction.findOne({
         where: {
-            merchant_id: req.authUser.merchant_id,
+            id
         },
-    });
+        include: ['product'],
+    })
 
-    if (!products.length > 0) {
+    if (!transaction) {
         return res.status(400).send({
             status: 'error',
-            message: 'No products found',
-        });
+            message: 'Transaction not found'
+        })
     }
 
-    const ownedProducts = products.map((product) => product.id);
-
-    const transactions = await Transaction.findAll({
-        where: {
-            product_id: {
-                [Op.or]: ownedProducts,
-            },
-            id: {
-                [Op.or]: ids,
-            },
-        },
-    });
-
-    if (!transactions.length > 0) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'No transactions found',
-        });
+    if (!canDelete(req.authUser, transaction)) {
+        return res.status(403).send('Forbidden')
     }
 
-    await Transaction.destroy({
-        where: {
-            product_id: {
-                [Op.or]: ownedProducts,
-            },
-            id: {
-                [Op.or]: ids,
-            },
-        },
-    });
-
+    transaction.destroy();
+    
     res.send({
         status: 'success',
+        transaction
     });
 };
