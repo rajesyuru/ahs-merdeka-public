@@ -133,7 +133,7 @@ exports.edit = async (req, res) => {
     }
 
     if (!canEdit(req.authUser, product)) {
-        return res.status(403).send('Forbidden')
+        return res.status(403).send('Forbidden');
     }
 
     const name = req.body.name;
@@ -222,7 +222,7 @@ exports.fetchStocks = async (req, res) => {
 exports.delete = async (req, res) => {
     const product_id = req.params.product_id;
 
-    const product = await Product.findByPk(product_id)
+    const product = await Product.findByPk(product_id);
 
     if (!product) {
         return res.status(400).send({
@@ -232,13 +232,50 @@ exports.delete = async (req, res) => {
     }
 
     if (!canEdit(req.authUser, product)) {
-        return res.status(403).send('Forbidden')
+        return res.status(403).send('Forbidden');
     }
 
     product.destroy();
 
     res.send({
         status: 'success',
-        data: product
-    })
-}
+        data: product,
+    });
+};
+
+exports.stock = async (req, res) => {
+    const id = req.params.product_id;
+
+    const product = await Product.findByPk(id);
+
+    if (!product) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Product not found',
+        });
+    }
+
+    if (!canEdit(req.authUser, product)) {
+        return res.status(403).send('Forbidden');
+    }
+
+    const { rows, count } = await Transaction.findAndCountAll({
+        where: {
+            product_id: product.id,
+        },
+        order: [['date', 'desc']],
+    });
+
+    if (count === 0) {
+        res.status(400).send({
+            status: 'error',
+            message: 'Transaction not found',
+        });
+    }
+
+    res.send({
+        status: 'success',
+        totalData: count,
+        data: rows,
+    });
+};

@@ -41,5 +41,6 @@ router.post('/', middlewareCanAdd, productController.add);
 router.put('/:product_id(\\d+)', productController.edit);
 router.get('/stocks', middlewareCanFetchStocks, productController.fetchStocks);
 router.delete('/:product_id(\\d+)', productController.delete)
+router.get('/stocks/:product_id(\\d+)', productController.stock)
 
 module.exports = router
