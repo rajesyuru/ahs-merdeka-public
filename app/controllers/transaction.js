@@ -199,9 +199,9 @@ exports.add = async (req, res) => {
 };
 
 exports.edit = async (req, res) => {
-    const id = req.params.id;
+    const id = req.params.transaction_id;
 
-    const transaction = await Transaction.findByPk(id);
+    const transaction = await Transaction.findByPk(id)
 
     if (!transaction) {
         return res.status(400).send({
