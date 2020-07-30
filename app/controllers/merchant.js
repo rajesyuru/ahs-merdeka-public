@@ -1,23 +1,22 @@
 const { Merchant, Op } = require('../models');
+const Joi = require('@hapi/joi')
 
 exports.fetch = async (req, res) => {
-    const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
-    const search = req.query.search || '';
-    const offset = (page - 1) * limit;
-
-    const count = await Merchant.count({
-        where: {
-            name: {
-                [Op.iLike]: `%${search}%`,
-            },
-        },
+    const schema = Joi.object({
+        page: Joi.number(),
+        limit: Joi.number(),
+        name: Joi.string()
     });
 
-    const merchants = await Merchant.findAll({
+    const page = req.query.page * 1 || 1; 
+    const limit = req.query.limit * 1 || 2147483647;
+    const offset = (page - 1) * limit;
+    const nameSearch = req.query.name || '';
+
+    const {count, rows} = await Merchant.findAndCountAll({
         where: {
             name: {
-                [Op.iLike]: `%${search}%`,
+                [Op.iLike]: `%${nameSearch}%`,
             },
         },
         limit: limit,
@@ -29,7 +28,7 @@ exports.fetch = async (req, res) => {
         totalData: count,
         totalPage: Math.ceil(count / limit),
         page: page,
-        data: merchants,
+        data: rows,
     });
 };
 

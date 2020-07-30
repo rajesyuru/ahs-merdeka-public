@@ -37,7 +37,7 @@ exports.fetch = async (req, res) => {
     let products;
     let ownedProductsId = [];
 
-    const sort = [['updated_at', 'desc']];
+    const sort = [['date', 'desc']];
 
     if (merchant_id !== null) {
         products = await Product.findAll({

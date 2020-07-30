@@ -1,5 +1,6 @@
 const { Product, Op, Transaction } = require('../models');
 const Joi = require('@hapi/joi');
+const moment = require('moment');
 
 const { canEdit } = require('../permissions/product');
 
@@ -277,5 +278,110 @@ exports.stock = async (req, res) => {
         status: 'success',
         totalData: count,
         data: rows,
+    });
+};
+
+exports.sales = async (req, res) => {
+
+    let product_id_array = [];
+
+    const products = await Product.findAll({
+        where: {
+            merchant_id: req.authUser.merchant_id,
+        },
+    });
+
+    if (products.length === 0) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'No products',
+        });
+    }
+
+    const week_code = req.params.week_code * 1;
+    
+    let startDate;
+    let endDate;
+
+    if (!week_code) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Week code required',
+        })
+    }
+    
+    if (week_code === 1) {
+        startDate = moment().startOf('week').toDate();
+        endDate = moment().endOf('week').toDate();
+    } else if (week_code === 2) {
+        startDate = moment().subtract(1, 'weeks').startOf('week').toDate();
+        endDate = moment().subtract(1, 'weeks').endOf('week').toDate();
+    } else {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Invalid week code (1 = this week, 2 = last week, 3 = this month)'
+        })
+    }
+
+    // console.log(typeof(week_code))
+
+    products.map(async (product) => { 
+        product_id_array.push(product.id);
+        if (product_id_array.length === products.length) {
+            const transactions = await Transaction.findAll({
+                where: {
+                    product_id: {
+                        [Op.or]: product_id_array,
+                    },
+                    date: {
+                        [Op.gte]: startDate,
+                        [Op.lte]: endDate,
+                    },
+                },
+                order: [['date', 'desc']],
+            });
+
+            let thisWeekTransactions = [];
+
+            for (let i = 1; i <= 7; i++) {
+                thisWeekTransactions.push({
+                    day: moment().weekday(i).format('ddd'),
+                    sales: '',
+                });
+            }
+
+            const data = thisWeekTransactions.map(({ day }) => {
+                let buys = [];
+                let sells = [];
+                let detail = {
+                    buys: [],
+                    sells: [],
+                };
+                transactions.map((transaction) => {
+                    if (moment(transaction.date).format('ddd') === day) {
+                        if (transaction.type === 'buy') {
+                            buys.push(transaction.quantity);
+                            detail.buys.push(transaction);
+                        } else {
+                            sells.push(transaction.quantity);
+                            detail.sells.push(transaction);
+                        }
+                    }
+                });
+                const buysSum = buys.reduce((a, b) => a + b, 0);
+                const sellsSum = sells.reduce((a, b) => a + b, 0);
+                // console.log(buysSum - sellsSum)
+                return {
+                    day: day,
+                    sales: buysSum - sellsSum,
+                    detail,
+                };
+            });
+
+            res.send({
+                status: 'success',
+                data: data,
+            });
+        }
     });
 };

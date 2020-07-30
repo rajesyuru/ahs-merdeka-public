@@ -42,5 +42,6 @@ router.put('/:product_id(\\d+)', productController.edit);
 router.get('/stocks', middlewareCanFetchStocks, productController.fetchStocks);
 router.delete('/:product_id(\\d+)', productController.delete)
 router.get('/stocks/:product_id(\\d+)', productController.stock)
+router.get('/sales/:week_code(\\d+)', productController.sales)
 
 module.exports = router
