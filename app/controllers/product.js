@@ -260,56 +260,54 @@ exports.stock = async (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    const { rows, count } = await Transaction.findAndCountAll({
+    const buys = await Transaction.findAll({
         where: {
-            product_id: product.id,
+            product_id: id,
+            type: 'buy',
         },
-        order: [['date', 'desc']],
     });
 
-    if (count === 0) {
-        res.status(400).send({
-            status: 'error',
-            message: 'Transaction not found',
-        });
-    }
+    const sells = await Transaction.findAll({
+        where: {
+            product_id: id,
+            type: 'sell',
+        },
+    });
+
+    const buysSum = buys.map((buy) => buy.quantity).reduce((a, b) => a + b, 0);
+    const sellsSum = sells.map((sell) => sell.quantity).reduce((a, b) => a + b, 0);
 
     res.send({
         status: 'success',
-        totalData: count,
-        data: rows,
+        data: {
+            product_id: id,
+            name: product.name,
+            quantity: buysSum - sellsSum
+        },
     });
 };
 
-exports.sales = async (req, res) => {
+exports.productSales = async (req, res) => {
+    const product_id = req.params.product_id;
 
-    let product_id_array = [];
+    const product = await Product.findByPk(product_id);
 
-    const products = await Product.findAll({
-        where: {
-            merchant_id: req.authUser.merchant_id,
-        },
-    });
-
-    if (products.length === 0) {
+    if (!product) {
         return res.status(400).send({
             status: 'error',
-            message: 'No products',
+            message: 'Product not found',
         });
     }
 
+    if (!canEdit(req.authUser, product)) {
+        return res.status(403).send('Forbidden');
+    }
+
     const week_code = req.params.week_code * 1;
-    
+
     let startDate;
     let endDate;
 
-    if (!week_code) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'Week code required',
-        })
-    }
-    
     if (week_code === 1) {
         startDate = moment().startOf('week').toDate();
         endDate = moment().endOf('week').toDate();
@@ -319,69 +317,54 @@ exports.sales = async (req, res) => {
     } else {
         return res.status(400).send({
             status: 'error',
-            message: 'Invalid week code (1 = this week, 2 = last week, 3 = this month)'
-        })
+            message: 'Invalid week code (1 = this week, 2 = last week)',
+        });
     }
 
-    // console.log(typeof(week_code))
+    const transactions = await Transaction.findAll({
+        where: {
+            product_id: product_id,
+            date: {
+                [Op.gte]: startDate,
+                [Op.lte]: endDate,
+            },
+        },
+        order: [['date', 'desc']],
+    });
 
-    products.map(async (product) => { 
-        product_id_array.push(product.id);
-        if (product_id_array.length === products.length) {
-            const transactions = await Transaction.findAll({
-                where: {
-                    product_id: {
-                        [Op.or]: product_id_array,
-                    },
-                    date: {
-                        [Op.gte]: startDate,
-                        [Op.lte]: endDate,
-                    },
-                },
-                order: [['date', 'desc']],
-            });
+    let thisWeekTransactions = [];
 
-            let thisWeekTransactions = [];
+    for (let i = 1; i <= 7; i++) {
+        thisWeekTransactions.push({
+            day: moment().weekday(i).format('ddd'),
+        });
+    }
 
-            for (let i = 1; i <= 7; i++) {
-                thisWeekTransactions.push({
-                    day: moment().weekday(i).format('ddd'),
-                    sales: '',
-                });
+    const data = thisWeekTransactions.map(({ day }) => {
+        let spending = [];
+        let income = [];
+        transactions.map(({price, buying_price, type, quantity, date}) => {
+            if (moment(date).format('ddd') === day) {
+                if (type === 'buy') {
+                    income.push(buying_price * quantity)
+                } else {
+                    spending.push(price * quantity)
+                }
             }
+        })
+        return {
+            day,
+            spending: spending.reduce((a, b) => a + b, 0),
+            income: income.reduce((a, b) => a + b, 0)
+        };
+    });
 
-            const data = thisWeekTransactions.map(({ day }) => {
-                let buys = [];
-                let sells = [];
-                let detail = {
-                    buys: [],
-                    sells: [],
-                };
-                transactions.map((transaction) => {
-                    if (moment(transaction.date).format('ddd') === day) {
-                        if (transaction.type === 'buy') {
-                            buys.push(transaction.quantity);
-                            detail.buys.push(transaction);
-                        } else {
-                            sells.push(transaction.quantity);
-                            detail.sells.push(transaction);
-                        }
-                    }
-                });
-                const buysSum = buys.reduce((a, b) => a + b, 0);
-                const sellsSum = sells.reduce((a, b) => a + b, 0);
-                // console.log(buysSum - sellsSum)
-                return {
-                    day: day,
-                    sales: buysSum - sellsSum,
-                    detail,
-                };
-            });
-
-            res.send({
-                status: 'success',
-                data: data,
-            });
-        }
+    res.send({
+        status: 'success',
+        data: {
+            product_id,
+            name: product.name,
+            data: data
+        },
     });
 };
