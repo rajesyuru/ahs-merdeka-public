@@ -28,11 +28,11 @@ exports.fetch = async (req, res) => {
     const nameSearch = req.query.name || '';
 
     const merchant_id = req.authUser.merchant_id;
-
+    
     const { count, rows } = await Product.findAndCountAll({
         where: {
             id:
-                idSearch && !merchant_id
+                idSearch && merchant_id !== null
                     ? {
                           [Op.eq]: idSearch,
                       }
