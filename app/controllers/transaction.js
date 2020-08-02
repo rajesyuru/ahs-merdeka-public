@@ -23,16 +23,17 @@ exports.fetch = async (req, res) => {
         });
     }
 
-    const page = req.query.page * 1 || 1; 
-    const limit = req.query.limit * 1 || 2147483647;
+    const merchant_id = req.authUser.merchant_id;
+
+    
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 20;
     const offset = (page - 1) * limit;
     const idSearch = req.query.id * 1 || null;
     const dateSearch = req.query.date;
     const productSearch = req.query.product_id * 1 || null;
     const typeSearch = req.query.search;
     const infoSearch = req.query.info || '';
-
-    const merchant_id = req.authUser.merchant_id;
 
     let products;
     let ownedProductsId = [];
@@ -201,7 +202,7 @@ exports.add = async (req, res) => {
 exports.edit = async (req, res) => {
     const id = req.params.transaction_id;
 
-    const transaction = await Transaction.findByPk(id)
+    const transaction = await Transaction.findByPk(id);
 
     if (!transaction) {
         return res.status(400).send({
@@ -216,7 +217,7 @@ exports.edit = async (req, res) => {
         type: Joi.string(),
         quantity: Joi.number().integer(),
         info: Joi.string().allow(null),
-        customer_id: Joi.number().allow(null)
+        customer_id: Joi.number().allow(null),
     });
 
     const { error } = schema.validate(req.body);
@@ -307,26 +308,26 @@ exports.delete = async (req, res) => {
 
     const transaction = await Transaction.findOne({
         where: {
-            id
+            id,
         },
         include: ['product'],
-    })
+    });
 
     if (!transaction) {
         return res.status(400).send({
             status: 'error',
-            message: 'Transaction not found'
-        })
+            message: 'Transaction not found',
+        });
     }
 
     if (!canDelete(req.authUser, transaction)) {
-        return res.status(403).send('Forbidden')
+        return res.status(403).send('Forbidden');
     }
 
     transaction.destroy();
-    
+
     res.send({
         status: 'success',
-        transaction
+        transaction,
     });
 };

@@ -21,14 +21,30 @@ exports.fetch = async (req, res) => {
         });
     }
 
+    const merchant_id = req.authUser.merchant_id;
+
+    let limit = 20;
+
+    if (!req.query.limit) {
+        const dataCount = await Product.count({
+            where: {
+                merchant_id,
+            },
+        });
+
+        if (dataCount) {
+            limit = dataCount
+        }
+    } else {
+        limit = req.query.limit * 1;
+    }
+
+
     const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
     const offset = (page - 1) * limit;
     const idSearch = req.query.id * 1 || null;
     const nameSearch = req.query.name || '';
 
-    const merchant_id = req.authUser.merchant_id;
-    
     const { count, rows } = await Product.findAndCountAll({
         where: {
             id:
@@ -275,14 +291,16 @@ exports.stock = async (req, res) => {
     });
 
     const buysSum = buys.map((buy) => buy.quantity).reduce((a, b) => a + b, 0);
-    const sellsSum = sells.map((sell) => sell.quantity).reduce((a, b) => a + b, 0);
+    const sellsSum = sells
+        .map((sell) => sell.quantity)
+        .reduce((a, b) => a + b, 0);
 
     res.send({
         status: 'success',
         data: {
             product_id: id,
             name: product.name,
-            quantity: buysSum - sellsSum
+            quantity: buysSum - sellsSum,
         },
     });
 };
@@ -343,19 +361,19 @@ exports.productSales = async (req, res) => {
     const data = thisWeekTransactions.map(({ day }) => {
         let spending = [];
         let income = [];
-        transactions.map(({price, buying_price, type, quantity, date}) => {
+        transactions.map(({ price, buying_price, type, quantity, date }) => {
             if (moment(date).format('ddd') === day) {
                 if (type === 'buy') {
-                    income.push(buying_price * quantity)
+                    income.push(buying_price * quantity);
                 } else {
-                    spending.push(price * quantity)
+                    spending.push(price * quantity);
                 }
             }
-        })
+        });
         return {
             day,
             spending: spending.reduce((a, b) => a + b, 0),
-            income: income.reduce((a, b) => a + b, 0)
+            income: income.reduce((a, b) => a + b, 0),
         };
     });
 
@@ -364,7 +382,7 @@ exports.productSales = async (req, res) => {
         data: {
             product_id,
             name: product.name,
-            data: data
+            data: data,
         },
     });
 };

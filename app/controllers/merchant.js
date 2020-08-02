@@ -1,19 +1,31 @@
 const { Merchant, Op } = require('../models');
-const Joi = require('@hapi/joi')
+const Joi = require('@hapi/joi');
+const e = require('express');
 
 exports.fetch = async (req, res) => {
     const schema = Joi.object({
         page: Joi.number(),
         limit: Joi.number(),
-        name: Joi.string()
+        name: Joi.string(),
     });
 
-    const page = req.query.page * 1 || 1; 
-    const limit = req.query.limit * 1 || 2147483647;
+    let limit = 20;
+
+    if (!req.query.limit) {
+        const dataCount = await Merchant.count();
+
+        if (dataCount) {
+            limit = dataCount;
+        }
+    } else {
+        limit = req.query.limit * 1;
+    }
+
+    const page = req.query.page * 1 || 1;
     const offset = (page - 1) * limit;
     const nameSearch = req.query.name || '';
 
-    const {count, rows} = await Merchant.findAndCountAll({
+    const { count, rows } = await Merchant.findAndCountAll({
         where: {
             name: {
                 [Op.iLike]: `%${nameSearch}%`,

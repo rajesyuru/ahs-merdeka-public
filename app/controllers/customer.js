@@ -8,7 +8,7 @@ exports.fetch = async (req, res) => {
         page: Joi.number().integer(),
         limit: Joi.number().integer(),
         name: Joi.string(),
-        id: Joi.number()
+        id: Joi.number(),
     });
 
     const { error } = schema.validate(req.query);
@@ -20,21 +20,36 @@ exports.fetch = async (req, res) => {
         });
     }
 
+    const merchant_id = req.authUser.merchant_id;
+
+    let limit = 20;
+
+    if (!req.query.limit) {
+        const dataCount = await Customer.count({
+            where: {
+                merchant_id,
+            },
+        });
+
+        if (dataCount) {
+            limit = dataCount;
+        }
+    } else {
+        limit = req.query.limit * 1;
+    }
+
     const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
     const name = req.query.name || '';
     const id = req.query.id;
     const offset = (page - 1) * limit;
-
-    const merchant_id = req.authUser.merchant_id;
 
     const { count, rows } = await Customer.findAndCountAll({
         where: {
             merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
             name: {
-                [Op.iLike]: `%${name}%`
+                [Op.iLike]: `%${name}%`,
             },
-            id: id ? id : { [Op.not]: null }
+            id: id ? id : { [Op.not]: null },
         },
         order: [['updated_at', 'desc']],
         limit: limit,
@@ -76,8 +91,8 @@ exports.add = async (req, res) => {
     const isNameUsed = await Customer.findOne({
         where: {
             name: {
-                [Op.iLike]: `%${name}%`
-            }
+                [Op.iLike]: `%${name}%`,
+            },
         },
     });
 
@@ -163,11 +178,11 @@ exports.edit = async (req, res) => {
             const isNameUsed = await Customer.findOne({
                 where: {
                     name: {
-                        [Op.iLike]: `%${name}%`
-                    }
+                        [Op.iLike]: `%${name}%`,
+                    },
                 },
             });
-        
+
             if (isNameUsed) {
                 return res.status(400).send({
                     status: 'error',
@@ -213,6 +228,6 @@ exports.delete = async (req, res) => {
     customer.destroy();
 
     res.send({
-        status: 'success'
-    })
-}
+        status: 'success',
+    });
+};
