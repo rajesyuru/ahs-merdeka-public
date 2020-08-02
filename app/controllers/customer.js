@@ -75,7 +75,9 @@ exports.add = async (req, res) => {
 
     const isNameUsed = await Customer.findOne({
         where: {
-            name
+            name: {
+                [Op.iLike]: `%${name}%`
+            }
         },
     });
 
@@ -157,6 +159,22 @@ exports.edit = async (req, res) => {
     }
 
     if (name) {
+        if (customer.name != name) {
+            const isNameUsed = await Customer.findOne({
+                where: {
+                    name: {
+                        [Op.iLike]: `%${name}%`
+                    }
+                },
+            });
+        
+            if (isNameUsed) {
+                return res.status(400).send({
+                    status: 'error',
+                    message: 'Name already exist',
+                });
+            }
+        }
         customer.name = name;
     }
     if (email) {
