@@ -10,6 +10,7 @@ exports.fetch = async (req, res) => {
         limit: Joi.number().integer(),
         id: Joi.number(),
         name: Joi.string(),
+        sort: Joi.string()
     });
 
     const { error } = schema.validate(req.query);
@@ -39,6 +40,20 @@ exports.fetch = async (req, res) => {
         limit = req.query.limit * 1;
     }
 
+    let sortBy = [['updated_at', 'desc']];
+    const querysortBy = req.query.sort;
+
+    if (querysortBy) {
+        const sortCat = querysortBy.split('-');
+        if (sortCat.length !== 2) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Sort format is wrong',
+            });
+        }
+        sortBy = [[sortCat[0], sortCat[1]]];
+    }
+
 
     const page = req.query.page * 1 || 1;
     const offset = (page - 1) * limit;
@@ -64,7 +79,7 @@ exports.fetch = async (req, res) => {
                       [Op.not]: null,
                   },
         },
-        order: [['updated_at', 'desc']],
+        order: sortBy,
         include: ['owner'],
         limit: limit,
         offset: offset,

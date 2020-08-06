@@ -12,6 +12,7 @@ exports.fetch = async (req, res) => {
         product_id: Joi.number(),
         type: Joi.string(),
         info: Joi.string(),
+        sort: Joi.string(),
     });
 
     const { error } = schema.validate(req.query);
@@ -25,10 +26,7 @@ exports.fetch = async (req, res) => {
 
     const merchant_id = req.authUser.merchant_id;
 
-    
     const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 20;
-    const offset = (page - 1) * limit;
     const idSearch = req.query.id * 1 || null;
     const dateSearch = req.query.date;
     const productSearch = req.query.product_id * 1 || null;
@@ -38,17 +36,37 @@ exports.fetch = async (req, res) => {
     let products;
     let ownedProductsId = [];
 
-    const sort = [['date', 'desc']];
+    let sortBy = [['updated_at', 'desc']];
+    const querysortBy = req.query.sort;
+
+    if (querysortBy) {
+        const sortCat = querysortBy.split('-');
+        if (sortCat.length !== 2) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Sort format is wrong',
+            });
+        }
+        sortBy = [[sortCat[0], sortCat[1]]];
+    }
+
+    let limit = req.query.limit * 1;
 
     if (merchant_id !== null) {
-        products = await Product.findAll({
+        products = await Product.findAndCountAll({
             where: {
                 merchant_id,
             },
         });
 
-        ownedProductsId = products.map((product) => product.id);
+        if (!limit) {
+            limit = products.count;
+        }
+
+        ownedProductsId = products.rows.map((product) => product.id);
     }
+
+    const offset = (page - 1) * limit;
 
     const { count, rows } = await Transaction.findAndCountAll({
         where: {
@@ -61,7 +79,7 @@ exports.fetch = async (req, res) => {
                   },
             date: dateSearch
                 ? {
-                      [Op.iLike]: `%${dateSearch}%`,
+                      [Op.eq]: new Date(dateSearch),
                   }
                 : {
                       [Op.not]: null,
@@ -96,7 +114,7 @@ exports.fetch = async (req, res) => {
                   },
         },
         include: ['product', 'customer'],
-        order: sort,
+        order: sortBy,
         limit: limit,
         offset: offset,
     });

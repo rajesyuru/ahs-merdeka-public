@@ -9,6 +9,7 @@ exports.fetch = async (req, res) => {
         limit: Joi.number().integer(),
         name: Joi.string(),
         id: Joi.number(),
+        sort: Joi.string(),
     });
 
     const { error } = schema.validate(req.query);
@@ -40,8 +41,22 @@ exports.fetch = async (req, res) => {
 
     const page = req.query.page * 1 || 1;
     const name = req.query.name || '';
-    const id = req.query.id;
+    const id = req.query.id * 1;
     const offset = (page - 1) * limit;
+
+    let sortBy = [['updated_at', 'desc']];
+    const querysortBy = req.query.sort;
+
+    if (querysortBy) {
+        const sortCat = querysortBy.split('-');
+        if (sortCat.length !== 2) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Sort format is wrong',
+            });
+        }
+        sortBy = [[sortCat[0], sortCat[1]]];
+    }
 
     const { count, rows } = await Customer.findAndCountAll({
         where: {
@@ -51,7 +66,7 @@ exports.fetch = async (req, res) => {
             },
             id: id ? id : { [Op.not]: null },
         },
-        order: [['updated_at', 'desc']],
+        order: sortBy,
         limit: limit,
         offset: offset,
     });
