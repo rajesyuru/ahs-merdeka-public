@@ -10,7 +10,8 @@ module.exports = (sequelize, DataTypes) => {
     info: DataTypes.STRING,
   }, {
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    MerchantId: 'merchant_id'
   });
   Transaction.associate = function(models) {
     models.Transaction.belongsTo(models.Product, {
@@ -21,6 +22,11 @@ module.exports = (sequelize, DataTypes) => {
     models.Transaction.belongsTo(models.Customer, {
       foreignKey: 'customer_id',
       as: 'customer',
+    });
+
+    models.Transaction.belongsTo(models.Merchant, {
+      foreignKey: 'merchant_id',
+      as: 'merchant',
     });
   };
   return Transaction;

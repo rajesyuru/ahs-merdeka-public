@@ -33,9 +33,6 @@ exports.fetch = async (req, res) => {
     const typeSearch = req.query.search;
     const infoSearch = req.query.info || '';
 
-    let products;
-    let ownedProductsId = [];
-
     let sortBy = [['updated_at', 'desc']];
     const querysortBy = req.query.sort;
 
@@ -52,49 +49,22 @@ exports.fetch = async (req, res) => {
 
     let limit = req.query.limit * 1;
 
-    if (merchant_id !== null) {
-        products = await Product.findAndCountAll({
+    if (!limit) {
+        limit = await Transaction.count({
             where: {
-                merchant_id,
+                merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
             },
+            attributes: { exclude: ['MerchantId'] }
         });
-
-        if (!limit) {
-            limit = products.count;
-        }
-
-        ownedProductsId = products.rows.map((product) => product.id);
     }
 
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Transaction.findAndCountAll({
         where: {
-            id: idSearch
-                ? {
-                      [Op.eq]: idSearch,
-                  }
-                : {
-                      [Op.not]: null,
-                  },
-            date: dateSearch
-                ? {
-                      [Op.eq]: new Date(dateSearch),
-                  }
-                : {
-                      [Op.not]: null,
-                  },
-            product_id: productSearch
-                ? {
-                      [Op.eq]: productSearch,
-                  }
-                : merchant_id
-                ? {
-                      [Op.in]: ownedProductsId,
-                  }
-                : {
-                      [Op.gt]: 0,
-                  },
+            id: idSearch ? idSearch : { [Op.not]: null },
+            date: dateSearch ? new Date(dateSearch) : { [Op.not]: null },
+            product_id: productSearch ? productSearch : { [Op.gt]: 0 },
             type: typeSearch
                 ? {
                       [Op.iLike]: `%${typeSearch}%`,
@@ -108,15 +78,17 @@ exports.fetch = async (req, res) => {
                   }
                 : {
                       [Op.or]: {
-                          [Op.iLike]: `%${infoSearch}%`,
+                          [Op.iLike]: `%%`,
                           [Op.is]: null,
                       },
                   },
+            merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
         },
         include: ['product', 'customer'],
         order: sortBy,
         limit: limit,
         offset: offset,
+        attributes: { exclude: ['MerchantId'] }
     });
 
     res.send({
@@ -198,8 +170,6 @@ exports.add = async (req, res) => {
         });
     }
 
-    // console.log(product.price)
-
     const data = await Transaction.create({
         date,
         product_id: id,
@@ -209,6 +179,7 @@ exports.add = async (req, res) => {
         type,
         info,
         customer_id,
+        merchant_id: req.authUser.merchant_id
     });
 
     res.send({
@@ -220,7 +191,12 @@ exports.add = async (req, res) => {
 exports.edit = async (req, res) => {
     const id = req.params.transaction_id;
 
-    const transaction = await Transaction.findByPk(id);
+    const transaction = await Transaction.findOne({
+        where: {
+            id
+        },
+        attributes: { exclude: ['MerchantId'] }
+    });
 
     if (!transaction) {
         return res.status(400).send({
@@ -328,7 +304,7 @@ exports.delete = async (req, res) => {
         where: {
             id,
         },
-        include: ['product'],
+        attributes: { exclude: ['MerchantId'] }
     });
 
     if (!transaction) {

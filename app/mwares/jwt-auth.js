@@ -53,7 +53,7 @@ const jwtRefreshAuth = (req, res, next) => {
 
                 res.status(401).send({
                     status: 'error',
-                    message: e.message
+                    message: e.message + ', please login.'
                 });
             }
         } else {

@@ -1,4 +1,4 @@
-const { Customer, Op, Merchant } = require('../models');
+const { Customer, Op } = require('../models');
 const Joi = require('@hapi/joi');
 
 const { canEdit } = require('../permissions/customer');
@@ -23,26 +23,9 @@ exports.fetch = async (req, res) => {
 
     const merchant_id = req.authUser.merchant_id;
 
-    let limit = 20;
-
-    if (!req.query.limit) {
-        const dataCount = await Customer.count({
-            where: {
-                merchant_id,
-            },
-        });
-
-        if (dataCount) {
-            limit = dataCount;
-        }
-    } else {
-        limit = req.query.limit * 1;
-    }
-
     const page = req.query.page * 1 || 1;
     const name = req.query.name || '';
     const id = req.query.id * 1;
-    const offset = (page - 1) * limit;
 
     let sortBy = [['updated_at', 'desc']];
     const querysortBy = req.query.sort;
@@ -57,6 +40,18 @@ exports.fetch = async (req, res) => {
         }
         sortBy = [[sortCat[0], sortCat[1]]];
     }
+
+    let limit = req.query.limit * 1;
+
+    if (!limit) {
+        limit = await Customer.count({
+            where: {
+                merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
+            },
+        });
+    }
+
+    const offset = (page - 1) * limit;
 
     const { count, rows } = await Customer.findAndCountAll({
         where: {

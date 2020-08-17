@@ -57,7 +57,7 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
     const payload = req.authUser;
-    console.log(req);
+    console.log('this works');
     delete payload.exp;
     delete payload.iat;
     const token = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {

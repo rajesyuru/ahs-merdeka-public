@@ -1,4 +1,4 @@
-const { Group, Op } = require('../models');
+const { Group, Op, Transaction, Product, Stock, Gallon } = require('../models');
 
 exports.groups = async (req, res) => {
     const page = req.query.page * 1 || 1;
@@ -29,5 +29,44 @@ exports.groups = async (req, res) => {
         totalPage: Math.ceil(count / limit),
         page: page,
         data: groups,
+    });
+};
+
+exports.setMerchantId = async (req, res) => {
+    await Transaction.findAll({
+        attributes: { exclude: ['MerchantId'] },
+    }).then((transactions) => {
+        transactions.map(async (transaction) => {
+            await Transaction.findOne({
+                where: {
+                    id: transaction.id,
+                },
+                include: ['product'],
+                attributes: { exclude: ['MerchantId'] },
+            }).then((item) => {
+                item.merchant_id = item.product.merchant_id;
+                item.save();
+            });
+        });
+    }).catch((error) => {
+        console.log(error)
+    });
+
+    await Stock.findAll().then((stocks) => {
+        stocks.map(async (stock) => {
+            await Stock.findOne({
+                where: {
+                    id: stock.id,
+                },
+                include: ['gallon'],
+            }).then((item) => {
+                item.merchant_id = item.gallon.merchant_id;
+                item.save();
+            });
+        });
+    });
+
+    res.send({
+        status: 'success',
     });
 };
