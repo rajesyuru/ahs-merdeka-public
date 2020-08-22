@@ -371,13 +371,9 @@ exports.edit = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
-    const id = req.params.stocks_id;
+    const id = req.params.stocks_id * 1;
 
-    const stock = await Stock.findOne({
-        where: {
-            id,
-        },
-    });
+    const stock = await Stock.findByPk(id);
 
     if (!stock) {
         return res.status(400).send({
@@ -393,7 +389,7 @@ exports.delete = async (req, res) => {
     const valType = typeCondition(stock.type);
     const gallon = await Gallon.findOne({
         where: {
-            id: stock.gallon.id,
+            id: stock.gallon_id,
         },
     });
 

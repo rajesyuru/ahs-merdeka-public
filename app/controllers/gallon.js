@@ -142,7 +142,7 @@ exports.add = async (req, res) => {
 exports.edit = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string().min(2),
-        stock: Joi.number().integer(),
+        stock: Joi.number().integer().min(0),
     });
 
     const { error } = schema.validate(req.body);

@@ -88,7 +88,7 @@ exports.fetch = async (req, res) => {
         order: sortBy,
         limit: limit,
         offset: offset,
-        attributes: { exclude: ['MerchantId'] }
+        attributes: { exclude: ['MerchantId', 'gallon_id'] }
     });
 
     res.send({
