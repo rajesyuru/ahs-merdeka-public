@@ -385,6 +385,7 @@ exports.report = async (req, res) => {
     let customersBorrowReturn = [];
 
     if (stocks.length !== 0) {
+        let totalBorrowedGallons = 0;
         customersArray.map(async (customer_id) => {
             const customer = await Customer.findByPk(customer_id);
 
@@ -429,10 +430,15 @@ exports.report = async (req, res) => {
                 involvedTransactions,
             });
 
+            totalBorrowedGallons += total;
+
             if (customersArray.length === customersBorrowReturn.length) {
                 return res.send({
                     status: 'success',
-                    data: customersBorrowReturn,
+                    data: {
+                        totalBorrowedGallons,
+                        transactions: customersBorrowReturn
+                    },
                 });
             }
         });
