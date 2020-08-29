@@ -368,6 +368,9 @@ exports.report = async (req, res) => {
                 : {
                       [Op.not]: null,
                   },
+            merchant_id: req.authUser.merchant_id || {
+                [Op.not]: null
+            }
         },
     });
 
@@ -396,6 +399,9 @@ exports.report = async (req, res) => {
                         : {
                               [Op.not]: null,
                           },
+                    merchant_id: req.authUser.merchant_id || {
+                        [Op.not]: null
+                    }
                 },
             });
 
