@@ -1,4 +1,4 @@
-const { Stock, Gallon, Op, Customer } = require('../models');
+const { Stock, Op, Customer } = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { modifyAccess } = require('../permissions/stock');
 
@@ -8,7 +8,6 @@ exports.fetch = async (req, res) => {
         limit: Joi.number(),
         id: Joi.number(),
         date: Joi.date().format('YYYY-MM-DD'),
-        product_id: Joi.number(),
         type: Joi.string(),
         info: Joi.string(),
         sort: Joi.string(),
@@ -28,7 +27,6 @@ exports.fetch = async (req, res) => {
     const page = req.query.page * 1 || 1;
     const idSearch = req.query.id * 1;
     const dateSearch = req.query.date;
-    const gallonSearch = req.query.gallon_id * 1 || null;
     const typeSearch = req.query.search;
     const infoSearch = req.query.info || '';
 
@@ -62,7 +60,6 @@ exports.fetch = async (req, res) => {
         where: {
             id: idSearch ? idSearch : { [Op.not]: null },
             date: dateSearch ? new Date(dateSearch) : { [Op.not]: null },
-            gallon_id: gallonSearch ? gallonSearch : { [Op.gt]: 0 },
             type: typeSearch
                 ? {
                       [Op.iLike]: `%${typeSearch}%`,
@@ -82,18 +79,45 @@ exports.fetch = async (req, res) => {
                   },
             merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
         },
-        include: ['gallon', 'customer'],
+        include: ['customer'],
         order: sortBy,
         limit: limit,
         offset: offset,
     });
+
+    let data = {
+        rows,
+    };
+
+    if (merchant_id) {
+        await Stock.findAll({
+            where: {
+                merchant_id: req.authUser.merchant_id,
+            },
+        }).then((stocks) => {
+            let stockIncrease = [];
+            let stockDecrease = [];
+
+            stocks.map((stock) => {
+                if (stock.type === 'buy' || stock.type === 'return') {
+                    stockIncrease.push(stock.quantity);
+                } else {
+                    stockDecrease.push(stock.quantity);
+                }
+            });
+
+            data.stock =
+                stockIncrease.reduce((a, b) => a + b, 0) -
+                stockDecrease.reduce((a, b) => a + b, 0);
+        });
+    }
 
     res.send({
         status: 'success',
         totalData: count,
         totalPage: Math.ceil(count / limit),
         page: page,
-        data: rows,
+        data,
     });
 };
 
@@ -110,7 +134,6 @@ const typeCondition = (type) => {
 exports.add = async (req, res) => {
     const schema = Joi.object({
         date: Joi.date().format('YYYY-MM-DD').required(),
-        gallon_id: Joi.number().required(),
         type: Joi.string().required(),
         quantity: Joi.number().required(),
         info: Joi.string().allow(null),
@@ -127,7 +150,6 @@ exports.add = async (req, res) => {
     }
 
     const date = req.body.date;
-    const id = req.body.gallon_id;
     const type = req.body.type;
     const quantity = req.body.quantity;
     const info = req.body.info;
@@ -172,40 +194,18 @@ exports.add = async (req, res) => {
         }
     }
 
-    const gallon = await Gallon.findByPk(id);
-
-    if (!gallon) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'Item not found',
-        });
-    }
-
-    if (!modifyAccess(req.authUser, gallon)) {
-        return res.status(403).send('Forbidden');
-    }
-
     const data = await Stock.create({
         date,
-        gallon_id: id,
         quantity,
         type,
         info,
         customer_id,
-        merchant_id: req.authUser.merchant_id
+        merchant_id: req.authUser.merchant_id,
     });
-
-    if (type === 'sell' || type === 'borrow') {
-        gallon.stock -= quantity;
-    } else {
-        gallon.stock += quantity;
-    }
-    gallon.save();
 
     res.send({
         status: 'success',
         data,
-        gallon,
     });
 };
 
@@ -216,7 +216,6 @@ exports.edit = async (req, res) => {
         where: {
             id,
         },
-        include: ['gallon'],
     });
 
     if (!stock) {
@@ -226,15 +225,14 @@ exports.edit = async (req, res) => {
         });
     }
 
-    if (!modifyAccess(req.authUser, stock.gallon)) {
+    if (!modifyAccess(req.authUser, stock)) {
         return res.status(403).send('Forbidden');
     }
 
     const schema = Joi.object({
         date: Joi.date().format('YYYY-MM-DD'),
-        gallon_id: Joi.number(),
         type: Joi.string(),
-        quantity: Joi.number().integer(),
+        quantity: Joi.number().integer().min(0),
         info: Joi.string().allow(null),
         customer_id: Joi.number().allow(null),
     });
@@ -249,7 +247,6 @@ exports.edit = async (req, res) => {
     }
 
     const date = req.body.date;
-    const gallon_id = req.body.gallon_id;
     const type = req.body.type;
     const quantity = req.body.quantity;
     const info = req.body.info;
@@ -259,36 +256,10 @@ exports.edit = async (req, res) => {
         stock.date = date;
     }
 
-    let gallon;
-
-    if (gallon_id) {
-        gallon = await Gallon.findByPk(gallon_id);
-
-        if (!gallon) {
-            return res.status(400).send({
-                status: 'error',
-                message: 'Item not found',
-            });
-        }
-
-        if (!modifyAccess(req.authUser, gallon)) {
-            return res.status(403).send('Forbidden');
-        }
-
-        stock.gallon_id = gallon_id;
-    } else {
-        gallon = await Gallon.findOne({
-            where: {
-                id: stock.gallon.id,
-            },
-        });
-    }
-
     if (info !== undefined) {
         stock.info = info;
     }
 
-    const stockType = typeCondition(stock.type);
     let valType = typeCondition(stock.type);
 
     if (type) {
@@ -304,17 +275,6 @@ exports.edit = async (req, res) => {
         stock.type = type;
     }
     if (!isNaN(quantity)) {
-        if (stockType === 1) {
-            gallon.stock += stock.quantity;
-        } else {
-            gallon.stock -= stock.quantity;
-        }
-
-        if (valType === 1) {
-            gallon.stock -= quantity;
-        } else {
-            gallon.stock += quantity;
-        }
         stock.quantity = quantity;
     }
     if (!customer_id) {
@@ -348,25 +308,11 @@ exports.edit = async (req, res) => {
 
         stock.customer_id = customer_id;
     }
-
     stock.save();
-    gallon.save();
 
     res.send({
         status: 'success',
-        data: {
-            stock: {
-                id: stock.id,
-                date: stock.date,
-                gallon_id: stock.gallon_id,
-                quantity: stock.quantity,
-                type: stock.type,
-                info: stock.info,
-                customer_id: stock.customer_id,
-                merchant_id: stock.merchant_id
-            },
-            gallon,
-        },
+        data: stock,
     });
 };
 
@@ -386,34 +332,108 @@ exports.delete = async (req, res) => {
         return res.status(403).send('Forbidden');
     }
 
-    const valType = typeCondition(stock.type);
-    const gallon = await Gallon.findOne({
-        where: {
-            id: stock.gallon_id,
-        },
-    });
-
-    if (valType === 1) {
-        gallon.stock += stock.quantity;
-    } else {
-        gallon.stock -= stock.quantity;
-    }
-    gallon.save();
     stock.destroy();
 
     res.send({
         status: 'success',
-        data: {
-            stock: {
-                id: stock.id,
-                date: stock.date,
-                gallon_id: stock.gallon_id,
-                quantity: stock.quantity,
-                type: stock.type,
-                info: stock.info,
-                customer_id: stock.customer_id,
+        data: stock,
+    });
+};
+
+exports.report = async (req, res) => {
+    const schema = Joi.object({
+        date: Joi.date().format('YYYY-MM-DD'),
+        name: Joi.string()
+    });
+
+    const { error } = schema.validate(req.query);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const date = req.query.date;
+
+    // send data about who's still borrowing an item
+    const stocks = await Stock.findAll({
+        where: {
+            type: {
+                [Op.or]: ['borrow', 'return'],
             },
-            gallon,
+            date: date
+                ? new Date(date)
+                : {
+                      [Op.not]: null,
+                  },
         },
     });
+
+    let customersArray = [];
+
+    stocks.map((stock) => {
+        if (customersArray.indexOf(stock.customer_id) < 0) {
+            customersArray.push(stock.customer_id);
+        }
+    });
+
+    let customersBorrowReturn = [];
+
+    if (stocks.length !== 0) {
+        customersArray.map(async (customer_id) => {
+            const customer = await Customer.findByPk(customer_id);
+
+            const involvedTransactions = await Stock.findAll({
+                where: {
+                    type: {
+                        [Op.or]: ['borrow', 'return'],
+                    },
+                    customer_id,
+                    date: date
+                        ? new Date(date)
+                        : {
+                              [Op.not]: null,
+                          },
+                },
+            });
+
+            let borrows = [];
+            let returns = [];
+
+            involvedTransactions.forEach((transaction) => {
+                if (transaction.type === 'borrow') {
+                    borrows.push(transaction.quantity);
+                } else {
+                    returns.push(transaction.quantity);
+                }
+            });
+
+            const reduceBorrow = borrows.reduce((a, b) => a + b, 0);
+            const reduceReturn = returns.reduce((a, b) => a + b, 0);
+            const total = reduceBorrow - reduceReturn;
+
+            customersBorrowReturn.push({
+                customer_id,
+                name: customer.name,
+                borrows: reduceBorrow,
+                returns: reduceReturn,
+                owed: total,
+                involvedTransactions,
+            });
+
+            if (customersArray.length === customersBorrowReturn.length) {
+                return res.send({
+                    status: 'success',
+                    data: customersBorrowReturn,
+                });
+            }
+        });
+    } else {
+        res.send({
+            status: 'success',
+            data: [],
+        });
+    }
 };

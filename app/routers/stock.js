@@ -27,5 +27,6 @@ router.get('/', stockController.fetch);
 router.post('/', mwareAdd, stockController.add);
 router.put('/:stocks_id(\\d+)', mwareAdd, stockController.edit);
 router.delete('/:stocks_id(\\d+)', mwareAdd, stockController.delete)
+router.get('/report', mwareAdd, stockController.report);
 
 module.exports = router;

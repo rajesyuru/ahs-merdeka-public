@@ -12,16 +12,6 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false,
       },
-      gallon_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        onDelete: 'CASCADE',
-        references: {
-          model: 'Gallons',
-          key: 'id',
-          as: 'gallon_id'
-        }
-      },
       quantity: {
         type: Sequelize.DOUBLE,
         allowNull: false,
