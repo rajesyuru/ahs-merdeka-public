@@ -3,7 +3,7 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     try {
-      await queryInterface.dropTable('Gallons');
+      await queryInterface.removeColumn('Products', 'gallon_id');
       return Promise.resolve();
     } catch (e) {
       return Promise.reject(e);
@@ -12,7 +12,7 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     try {
-      await queryInterface.dropTable('Gallons');
+      await queryInterface.removeColumn('Products', 'gallon_id');
       return Promise.resolve();
     } catch (e) {
       return Promise.reject(e);
