@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-  up: (queryInterface, Sequelize) => {
+  up: async (queryInterface, Sequelize) => {
     try {
       await queryInterface.dropTable('Gallons');
       return Promise.resolve();
@@ -10,7 +10,7 @@ module.exports = {
     }
   },
 
-  down: (queryInterface, Sequelize) => {
+  down: async (queryInterface, Sequelize) => {
     try {
       await queryInterface.dropTable('Gallons');
       return Promise.resolve();
