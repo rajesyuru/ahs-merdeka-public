@@ -2,24 +2,32 @@ const express = require('express');
 
 const transactionController = require('../controllers/transaction');
 const { jwtAuth } = require('../mwares/jwt-auth');
-const { canView } = require('../permissions/transaction');
+const { haveAccess, addAccess } = require('../permissions/transaction');
 
 const router = express.Router();
 
 router.use(jwtAuth);
 
-const middlewareCanView = (req, res, next) => {
-    if (!canView(req.authUser)) {
-        res.status(403);
-        return res.send('Forbidden');
+router.use((req, res, next) => {
+    if (!haveAccess(req.authUser)) {
+        return res.status(403).send('Forbidden')
+    }
+
+    next();
+})
+
+const mwareAdd = (req, res, next) => {
+    if (!addAccess(req.authUser)) {
+        return res.status(403).send('Forbidden');
     }
 
     next();
 };
 
-router.get('/', middlewareCanView, transactionController.fetch);
-router.post('/', transactionController.add);
-router.put('/:transaction_id(\\d+)', transactionController.edit);
-router.delete('/:transaction_id(\\d+)', transactionController.delete);
+router.get('/', transactionController.fetch);
+router.post('/', mwareAdd, transactionController.add);
+router.put('/:transaction_id(\\d+)', mwareAdd, transactionController.edit);
+router.delete('/:transaction_id(\\d+)', mwareAdd, transactionController.delete);
+router.get('/revenue', mwareAdd, transactionController.revenue)
 
 module.exports = router;

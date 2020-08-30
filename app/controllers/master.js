@@ -52,19 +52,19 @@ exports.setMerchantId = async (req, res) => {
         console.log(error)
     });
 
-    await Stock.findAll().then((stocks) => {
-        stocks.map(async (stock) => {
-            await Stock.findOne({
-                where: {
-                    id: stock.id,
-                },
-                include: ['gallon'],
-            }).then((item) => {
-                item.merchant_id = item.gallon.merchant_id;
-                item.save();
-            });
-        });
-    });
+    // await Stock.findAll().then((stocks) => {
+    //     stocks.map(async (stock) => {
+    //         await Stock.findOne({
+    //             where: {
+    //                 id: stock.id,
+    //             },
+    //             include: ['gallon'],
+    //         }).then((item) => {
+    //             item.merchant_id = item.gallon.merchant_id;
+    //             item.save();
+    //         });
+    //     });
+    // });
 
     res.send({
         status: 'success',

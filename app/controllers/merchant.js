@@ -1,6 +1,5 @@
 const { Merchant, Op } = require('../models');
 const Joi = require('@hapi/joi');
-const e = require('express');
 
 exports.fetch = async (req, res) => {
     const schema = Joi.object({

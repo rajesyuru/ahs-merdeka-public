@@ -1,7 +1,8 @@
 const { Transaction, Op, Product, Customer } = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
-const { canAddEdit, canDelete } = require('../permissions/transaction');
+const { modifyAccess } = require('../permissions/transaction');
 const { canEdit } = require('../permissions/customer');
+const moment = require('moment');
 
 exports.fetch = async (req, res) => {
     const schema = Joi.object({
@@ -52,9 +53,9 @@ exports.fetch = async (req, res) => {
     if (!limit) {
         limit = await Transaction.count({
             where: {
-                merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
+                merchant_id: merchant_id || { [Op.not]: null },
             },
-            attributes: { exclude: ['MerchantId'] }
+            attributes: { exclude: ['MerchantId'] },
         });
     }
 
@@ -62,9 +63,9 @@ exports.fetch = async (req, res) => {
 
     const { count, rows } = await Transaction.findAndCountAll({
         where: {
-            id: idSearch ? idSearch : { [Op.not]: null },
+            id: idSearch || { [Op.not]: null },
             date: dateSearch ? new Date(dateSearch) : { [Op.not]: null },
-            product_id: productSearch ? productSearch : { [Op.gt]: 0 },
+            product_id: productSearch || { [Op.gt]: 0 },
             type: typeSearch
                 ? {
                       [Op.iLike]: `%${typeSearch}%`,
@@ -82,13 +83,13 @@ exports.fetch = async (req, res) => {
                           [Op.is]: null,
                       },
                   },
-            merchant_id: merchant_id ? merchant_id : { [Op.not]: null },
+            merchant_id: merchant_id || { [Op.not]: null },
         },
         include: ['product', 'customer'],
         order: sortBy,
         limit: limit,
         offset: offset,
-        attributes: { exclude: ['MerchantId', 'gallon_id'] }
+        attributes: { exclude: ['MerchantId', 'gallon_id'] },
     });
 
     res.send({
@@ -163,7 +164,7 @@ exports.add = async (req, res) => {
         });
     }
 
-    if (!canAddEdit(req.authUser, product)) {
+    if (!modifyAccess(req.authUser, product)) {
         return res.status(401).send({
             status: 'error',
             message: 'Forbidden',
@@ -179,7 +180,7 @@ exports.add = async (req, res) => {
         type,
         info,
         customer_id,
-        merchant_id: req.authUser.merchant_id
+        merchant_id: req.authUser.merchant_id,
     });
 
     res.send({
@@ -193,9 +194,9 @@ exports.edit = async (req, res) => {
 
     const transaction = await Transaction.findOne({
         where: {
-            id
+            id,
         },
-        attributes: { exclude: ['MerchantId'] }
+        attributes: { exclude: ['MerchantId'] },
     });
 
     if (!transaction) {
@@ -243,7 +244,7 @@ exports.edit = async (req, res) => {
         });
     }
 
-    if (!canAddEdit(req.authUser, product)) {
+    if (!modifyAccess(req.authUser, product)) {
         return res.status(401).send({
             status: 'error',
             message: 'Forbidden',
@@ -304,7 +305,7 @@ exports.delete = async (req, res) => {
         where: {
             id,
         },
-        attributes: { exclude: ['MerchantId'] }
+        attributes: { exclude: ['MerchantId'] },
     });
 
     if (!transaction) {
@@ -314,7 +315,7 @@ exports.delete = async (req, res) => {
         });
     }
 
-    if (!canDelete(req.authUser, transaction)) {
+    if (!modifyAccess(req.authUser, transaction)) {
         return res.status(403).send('Forbidden');
     }
 
@@ -323,5 +324,56 @@ exports.delete = async (req, res) => {
     res.send({
         status: 'success',
         transaction,
+    });
+};
+
+exports.revenue = async (req, res) => {
+    const schema = Joi.object({
+        date: Joi.date().format('YYYY-MM-DD').required(),
+    });
+
+    const { error } = schema.validate(req.query);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const transactions = await Transaction.findAll({
+        where: {
+            date: new Date(req.query.date),
+            merchant_id: req.authUser.merchant_id,
+        },
+        attributes: { exclude: ['MerchantId'] },
+        include: ['product'],
+        order: [
+            ['updated_at', 'desc']
+        ]
+    });
+
+    let In = [];
+    let Out = [];
+
+    transactions.map(({ price, buying_price, quantity, type }) => {
+        if (type === 'buy') {
+            Out.push(buying_price * quantity);
+        } else {
+            In.push(price * quantity);
+        }
+    });
+
+    const income = In.reduce((a, b) => a + b, 0);
+    const spending = Out.reduce((a, b) => a + b, 0);
+
+    res.send({
+        status: 'success',
+        data: {
+            income,
+            spending,
+            revenue: income - spending,
+            transactions,
+        }
     });
 };
