@@ -15,7 +15,7 @@ exports.login = async (req, res) => {
         },
     });
 
-    if (user) {
+    if (user) { 
         if (bcrypt.compareSync(password, user.password)) {
             const payload = {
                 id: user.id,

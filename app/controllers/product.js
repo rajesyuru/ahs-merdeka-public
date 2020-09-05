@@ -362,6 +362,7 @@ exports.productSales = async (req, res) => {
                 [Op.lte]: endDate,
             },
         },
+        attributes: { exclude: ['MerchantId'] },
         order: [['date', 'desc']],
     });
 
