@@ -329,7 +329,8 @@ exports.delete = async (req, res) => {
 
 exports.revenue = async (req, res) => {
     const schema = Joi.object({
-        date: Joi.date().format('YYYY-MM-DD').required(),
+        start_date: Joi.date().format('YYYY-MM-DD').required(),
+        end_date: Joi.date().format('YYYY-MM-DD').required(),
     });
 
     const { error } = schema.validate(req.query);
@@ -341,9 +342,14 @@ exports.revenue = async (req, res) => {
         });
     }
 
+    const startDate = new Date(req.query.start_date);
+    const endDate = new Date(req.query.end_date);
+
     const transactions = await Transaction.findAll({
         where: {
-            date: new Date(req.query.date),
+            date: {
+                [Op.and]: [{[Op.gte]: startDate}, {[Op.lte]: endDate}]
+            },
             merchant_id: req.authUser.merchant_id,
         },
         attributes: { exclude: ['MerchantId'] },

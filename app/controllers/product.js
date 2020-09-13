@@ -217,6 +217,7 @@ exports.fetchStocks = async (req, res) => {
                 product_id: id,
                 type: 'buy',
             },
+            attributes: { exclude: ['MerchantId'] }
         });
 
         const sells = await Transaction.findAll({
@@ -224,6 +225,7 @@ exports.fetchStocks = async (req, res) => {
                 product_id: id,
                 type: 'sell',
             },
+            attributes: { exclude: ['MerchantId'] }
         });
 
         const buysSum = buys
