@@ -331,6 +331,8 @@ exports.revenue = async (req, res) => {
     const schema = Joi.object({
         start_date: Joi.date().format('YYYY-MM-DD').required(),
         end_date: Joi.date().format('YYYY-MM-DD').required(),
+        limit: Joi.number(),
+        page: Joi.number(),
     });
 
     const { error } = schema.validate(req.query);
@@ -345,24 +347,20 @@ exports.revenue = async (req, res) => {
     const startDate = new Date(req.query.start_date);
     const endDate = new Date(req.query.end_date);
 
-    const transactions = await Transaction.findAll({
+    const data = await Transaction.findAll({
         where: {
             date: {
-                [Op.and]: [{[Op.gte]: startDate}, {[Op.lte]: endDate}]
+                [Op.and]: [{ [Op.gte]: startDate }, { [Op.lte]: endDate }],
             },
-            merchant_id: req.authUser.merchant_id,
+            merchant_id: req.authUser.merchant_id || { [Op.not]: null },
         },
         attributes: { exclude: ['MerchantId'] },
-        include: ['product'],
-        order: [
-            ['updated_at', 'desc']
-        ]
     });
 
     let In = [];
     let Out = [];
 
-    transactions.map(({ price, buying_price, quantity, type }) => {
+    data.map(({ price, buying_price, quantity, type }) => {
         if (type === 'buy') {
             Out.push(buying_price * quantity);
         } else {
@@ -373,13 +371,48 @@ exports.revenue = async (req, res) => {
     const income = In.reduce((a, b) => a + b, 0);
     const spending = Out.reduce((a, b) => a + b, 0);
 
+    const page = req.query.page * 1 || 1;
+    let limit = req.query.limit * 1;
+
+    if (!limit) {
+        limit = await Transaction.count({
+            where: {
+                date: {
+                    [Op.and]: [{ [Op.gte]: startDate }, { [Op.lte]: endDate }],
+                },
+                merchant_id: req.authUser.merchant_id || { [Op.not]: null },
+            },
+            attributes: { exclude: ['MerchantId'] },
+        });
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Transaction.findAndCountAll({
+        where: {
+            date: {
+                [Op.and]: [{ [Op.gte]: startDate }, { [Op.lte]: endDate }],
+            },
+            merchant_id: req.authUser.merchant_id || { [Op.not]: null },
+        },
+        attributes: { exclude: ['MerchantId'] },
+        include: ['product'],
+        order: [['updated_at', 'desc']],
+        limit: limit,
+        offset: offset,
+    });
+
     res.send({
         status: 'success',
         data: {
             income,
             spending,
             revenue: income - spending,
-            transactions,
-        }
+            transaction: {
+                page: page,
+                totalPage: Math.ceil(count / limit),
+                data: rows
+            },
+        },
     });
 };
