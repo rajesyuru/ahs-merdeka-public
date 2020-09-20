@@ -100,10 +100,8 @@ exports.add = async (req, res) => {
 
     const isNameUsed = await Customer.findOne({
         where: {
-            name: {
-                [Op.iLike]: `%${name}%`,
-            },
-            merchant_id: merchant_id ? merchant_id : { [Op.not]: null }
+            name: name,
+            merchant_id: merchant_id || { [Op.not]: null }
         },
     });
 
