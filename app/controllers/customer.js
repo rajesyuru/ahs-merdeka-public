@@ -98,20 +98,20 @@ exports.add = async (req, res) => {
     const address = req.body.address;
     const merchant_id = req.authUser.merchant_id;
 
-    const isNameUsed = await Customer.findOne({
-        where: {
-            name: {
-                [Op.iLike]: `%${name}%`,
-            },
-        },
-    });
+    // const isNameUsed = await Customer.findOne({
+    //     where: {
+    //         name: {
+    //             [Op.iLike]: `%${name}%`,
+    //         },
+    //     },
+    // });
 
-    if (isNameUsed) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'Name already exist',
-        });
-    }
+    // if (isNameUsed) {
+    //     return res.status(400).send({
+    //         status: 'error',
+    //         message: 'Name already exist',
+    //     });
+    // }
 
     if (email) {
         const isEmailUsed = await Customer.findOne({
