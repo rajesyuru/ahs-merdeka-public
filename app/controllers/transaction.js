@@ -140,7 +140,12 @@ exports.add = async (req, res) => {
     }
 
     if (customer_id) {
-        const customer = await Customer.findByPk(customer_id);
+        const customer = await Customer.findOne({
+            where: {
+                id: customer_id,
+                merchant_id: req.authUser.merchant_id
+            }
+        });
 
         if (!customer) {
             return res.status(400).send({
