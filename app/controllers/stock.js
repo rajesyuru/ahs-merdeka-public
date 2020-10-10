@@ -58,7 +58,7 @@ exports.fetch = async (req, res) => {
 
     const { count, rows } = await Stock.findAndCountAll({
         where: {
-            id: idSearch ? idSearch : { [Op.not]: null },
+            id: idSearch || { [Op.not]: null },
             date: dateSearch ? new Date(dateSearch) : { [Op.not]: null },
             type: typeSearch
                 ? {

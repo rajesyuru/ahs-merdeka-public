@@ -1,9 +1,9 @@
 const express = require('express');
 
 const productController = require('../controllers/product');
-const {jwtAuth} = require('../mwares/jwt-auth');
+const { jwtAuth } = require('../mwares/jwt-auth');
 
-const {canView, canAdd, canFetchStocks} = require('../permissions/product');
+const { canView, canAdd, canFetchStocks } = require('../permissions/product');
 
 const router = express.Router();
 
@@ -34,14 +34,18 @@ const middlewareCanFetchStocks = (req, res, next) => {
     }
 
     next();
-}
+};
 
 router.get('/', middlewareCanView, productController.fetch);
 router.post('/', middlewareCanAdd, productController.add);
 router.put('/:product_id(\\d+)', productController.edit);
 router.get('/stocks', middlewareCanFetchStocks, productController.fetchStocks);
-router.delete('/:product_id(\\d+)', productController.delete)
-router.get('/stocks/:product_id(\\d+)', productController.stock)
-router.get('/sales/:week_code(\\d+)/:product_id(\\d+)', productController.productSales)
+router.delete('/:product_id(\\d+)', productController.delete);
+router.get('/stocks/:product_id(\\d+)', productController.stock);
+router.get(
+    '/sales/:week_code(\\d+)/:product_id(\\d+)',
+    productController.productSales
+);
+router.put('/set-group-id', productController.setGroupId);
 
-module.exports = router
+module.exports = router;

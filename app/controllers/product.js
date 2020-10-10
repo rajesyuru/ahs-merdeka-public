@@ -1,4 +1,4 @@
-const { Product, Op, Transaction } = require('../models');
+const { Product, Op, Transaction, ProductsGroups } = require('../models');
 const Joi = require('@hapi/joi');
 const moment = require('moment');
 
@@ -10,7 +10,7 @@ exports.fetch = async (req, res) => {
         limit: Joi.number().integer(),
         id: Joi.number(),
         name: Joi.string(),
-        sort: Joi.string()
+        sort: Joi.string(),
     });
 
     const { error } = schema.validate(req.query);
@@ -34,7 +34,7 @@ exports.fetch = async (req, res) => {
         });
 
         if (dataCount) {
-            limit = dataCount
+            limit = dataCount;
         }
     } else {
         limit = req.query.limit * 1;
@@ -53,7 +53,6 @@ exports.fetch = async (req, res) => {
         }
         sortBy = [[sortCat[0], sortCat[1]]];
     }
-
 
     const page = req.query.page * 1 || 1;
     const offset = (page - 1) * limit;
@@ -80,7 +79,7 @@ exports.fetch = async (req, res) => {
                   },
         },
         order: sortBy,
-        include: ['owner'],
+        include: ['owner', 'group'],
         limit: limit,
         offset: offset,
     });
@@ -99,6 +98,7 @@ exports.add = async (req, res) => {
         name: Joi.string().required(),
         price: Joi.number().required(),
         buying_price: Joi.number().required(),
+        group_id: Joi.number().allow(null),
         image: Joi.string(),
     });
 
@@ -117,6 +117,7 @@ exports.add = async (req, res) => {
     const price = req.body.price;
     const buying_price = req.body.buying_price;
     const image = req.body.image || '';
+    const group_id = req.body.group_id;
 
     const data = await Product.create({
         name,
@@ -124,6 +125,7 @@ exports.add = async (req, res) => {
         image,
         merchant_id: merchant_id * 1,
         buying_price,
+        group_id: group_id && group_id * 1
     });
 
     res.send({
@@ -137,6 +139,7 @@ exports.edit = async (req, res) => {
         name: Joi.string(),
         price: Joi.number(),
         buying_price: Joi.number(),
+        group_id: Joi.number().allow(null),
         image: Joi.string(),
     });
 
@@ -172,18 +175,22 @@ exports.edit = async (req, res) => {
     const price = req.body.price;
     const buying_price = req.body.buying_price;
     const image = req.body.image;
+    const group_id = req.body.group_id;
 
     if (name) {
         product.name = name;
     }
-    if (price) {
+    if (price !== null && price !== undefined) {
         product.price = price;
     }
-    if (buying_price) {
+    if (buying_price !== null && buying_price !== undefined) {
         product.buying_price = buying_price;
     }
     if (image) {
         product.image = image;
+    }
+    if (group_id === null || typeof group_id === 'number') {
+        product.group_id = group_id
     }
     product.save();
 
@@ -217,7 +224,7 @@ exports.fetchStocks = async (req, res) => {
                 product_id: id,
                 type: 'buy',
             },
-            attributes: { exclude: ['MerchantId'] }
+            attributes: { exclude: ['MerchantId'] },
         });
 
         const sells = await Transaction.findAll({
@@ -225,7 +232,7 @@ exports.fetchStocks = async (req, res) => {
                 product_id: id,
                 type: 'sell',
             },
-            attributes: { exclude: ['MerchantId'] }
+            attributes: { exclude: ['MerchantId'] },
         });
 
         const buysSum = buys
@@ -401,6 +408,76 @@ exports.productSales = async (req, res) => {
             product_id,
             name: product.name,
             data: data,
+        },
+    });
+};
+
+exports.setGroupId = async (req, res) => {
+    const schema = Joi.object({
+        product_id: Joi.number().integer().required(),
+        group_id: Joi.number().integer().required()
+    });
+
+    const { error } = schema.validate(req.body);
+
+    if (error) {
+        return res.status(400).send({
+            status: 'error',
+            message: error.message,
+        });
+    }
+
+    const product_id = req.body.product_id;
+    const group_id = req.body.group_id;
+
+    const productsGroup = await ProductsGroups.findOne({
+        where: {
+            id: group_id,
+        },
+    });
+
+    if (!productsGroup) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Item not found',
+        });
+    }
+
+    if (!canEdit(req.authUser, productsGroup)) {
+        return res.status(403).send({
+            status: 'error',
+            message: 'Forbidden group_id',
+        });
+    }
+
+    const product = await Product.findOne({
+        where: {
+            id: product_id,
+        },
+    });
+
+    if (!product) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Item not found',
+        });
+    }
+
+    if (!canEdit(req.authUser, product)) {
+        return res.status(403).send({
+            status: 'error',
+            message: 'Forbidden product_id',
+        });
+    }
+
+    product.group_id = group_id;
+    product.save();
+
+    res.send({
+        status: 'success',
+        data: {
+            product,
+            productsGroup,
         },
     });
 };

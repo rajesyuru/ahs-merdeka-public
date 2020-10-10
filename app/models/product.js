@@ -15,6 +15,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'merchant_id',
       as: 'owner',
     });
+
+    models.Product.belongsTo(models.ProductsGroups, {
+      foreignKey: 'group_id',
+      as: 'group',
+    });
   };
   return Product;
 };

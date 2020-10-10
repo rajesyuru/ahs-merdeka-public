@@ -49,7 +49,7 @@ const jwtRefreshAuth = (req, res, next) => {
 
                 next();
             } catch (e) {
-                console.log('error', e);
+                console.log('error', ez);
 
                 res.status(401).send({
                     status: 'error',

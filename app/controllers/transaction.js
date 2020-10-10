@@ -1,4 +1,10 @@
-const { Transaction, Op, Product, Customer } = require('../models');
+const {
+    Transaction,
+    Op,
+    Product,
+    Customer,
+    ProductsGroups,
+} = require('../models');
 const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { modifyAccess } = require('../permissions/transaction');
 const { canEdit } = require('../permissions/customer');
@@ -143,8 +149,8 @@ exports.add = async (req, res) => {
         const customer = await Customer.findOne({
             where: {
                 id: customer_id,
-                merchant_id: req.authUser.merchant_id
-            }
+                merchant_id: req.authUser.merchant_id,
+            },
         });
 
         if (!customer) {
@@ -188,6 +194,22 @@ exports.add = async (req, res) => {
         merchant_id: req.authUser.merchant_id,
     });
 
+    if (product.group_id) {
+        const group = await ProductsGroups.findOne({
+            where: {
+                id: product.group_id,
+            },
+        });
+
+        if (type === 'sell') {
+            group.quantity -= quantity;
+        } else {
+            group.quantity += quantity;
+        }
+
+        group.save();
+    }
+
     res.send({
         status: 'success',
         data: data,
@@ -212,12 +234,12 @@ exports.edit = async (req, res) => {
     }
 
     const schema = Joi.object({
-        date: Joi.date().format('YYYY-MM-DD'),
-        product_id: Joi.number(),
-        type: Joi.string(),
-        quantity: Joi.number().integer(),
-        info: Joi.string().allow(null),
-        customer_id: Joi.number().allow(null),
+        date: Joi.date().format('YYYY-MM-DD').required(),
+        product_id: Joi.number().required(),
+        type: Joi.string().required(),
+        quantity: Joi.number().integer().required(),
+        info: Joi.string().allow(null).required(),
+        customer_id: Joi.number().allow(null).required(),
     });
 
     const { error } = schema.validate(req.body);
@@ -230,7 +252,7 @@ exports.edit = async (req, res) => {
     }
 
     const date = req.body.date;
-    const product_id = req.body.product_id || transaction.product_id;
+    const product_id = req.body.product_id;
     const type = req.body.type;
     const quantity = req.body.quantity;
     const info = req.body.info;
@@ -238,7 +260,7 @@ exports.edit = async (req, res) => {
 
     const product = await Product.findOne({
         where: {
-            id: product_id,
+            id: product_id || transaction.product_id,
         },
     });
 
@@ -256,38 +278,66 @@ exports.edit = async (req, res) => {
         });
     }
 
-    if (date) {
-        transaction.date = date;
-    }
     transaction.product_id = product_id;
-    if (quantity) {
-        transaction.quantity = quantity;
-    }
-    if (type) {
-        transaction.type = type;
-    }
-    transaction.info = info;
-    if (type === 'sell' && !customer_id) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'customer_id is required if the type is sell',
-        });
-    } else if (type === 'buy' && customer_id) {
-        return res.status(400).send({
-            status: 'error',
-            message: 'customer_id is not required if the type is buy',
-        });
-    }
-    if (customer_id) {
-        const customer = await Customer.findByPk(customer_id);
+    transaction.price = product.price;
+    transaction.buying_price = product.buying_price;
 
+    const pastQuantity = transaction.quantity;
+    const pastType = transaction.type;
+
+    transaction.date = date;
+
+    transaction.info = info;
+
+    let group = null;
+
+    if (product && product.group_id) {
+        group = await ProductsGroups.findOne({
+            where: {
+                id: product.group_id,
+            },
+        });
+
+        if (!group) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'Telah terjadi kesalahan',
+            });
+        }
+
+        if (pastType === 'sell') {
+            group.quantity += pastQuantity;
+        } else {
+            group.quantity -= pastQuantity;
+        }
+    }
+
+    transaction.type = type;
+
+    transaction.quantity = quantity;
+
+    if (group) {
+        if (type === 'sell') {
+            group.quantity -= quantity;
+        } else {
+            group.quantity += quantity;
+        }
+    }
+
+    if (customer_id) {
+        const customer = await Customer.findOne({
+            where: {
+                id: customer_id
+            }
+        });
+    
         if (!customer) {
             return res.status(400).send({
                 status: 'error',
                 message: 'Customer not found',
             });
         }
-
+    
         if (!canEdit(req.authUser, customer)) {
             return res.status(403).send('Forbidden');
         }
@@ -295,6 +345,19 @@ exports.edit = async (req, res) => {
 
     transaction.customer_id = customer_id;
 
+    if (type === 'sell' && customer_id === null) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'customer_id is required if the type is sell',
+        });
+    } else if (type === 'buy' && customer_id !== null) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'customer_id is not required if the type is buy',
+        });
+    }
+
+    group.save()
     transaction.save();
 
     res.send({
@@ -311,6 +374,7 @@ exports.delete = async (req, res) => {
             id,
         },
         attributes: { exclude: ['MerchantId'] },
+        include: ['product']
     });
 
     if (!transaction) {
@@ -322,6 +386,22 @@ exports.delete = async (req, res) => {
 
     if (!modifyAccess(req.authUser, transaction)) {
         return res.status(403).send('Forbidden');
+    }
+
+    if (transaction.product.group_id) {
+        const group = await ProductsGroups.findOne({
+            where: {
+                id: transaction.product.group_id
+            }
+        });
+
+        if (transaction.type === 'sell') {
+            group.quantity += transaction.quantity
+        } else {
+            group.quantity -= transaction.quantity
+        }
+
+        group.save();
     }
 
     transaction.destroy();
@@ -416,7 +496,7 @@ exports.revenue = async (req, res) => {
             transaction: {
                 page: page,
                 totalPage: Math.ceil(count / limit),
-                data: rows
+                data: rows,
             },
         },
     });
