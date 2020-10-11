@@ -157,7 +157,7 @@ exports.edit = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
-    const group_id = id;
+    const group_id = req.params.id;
 
     const productsGroup = await ProductsGroups.findOne({
         where: {
