@@ -61,7 +61,6 @@ exports.fetch = async (req, res) => {
             where: {
                 merchant_id: merchant_id || { [Op.not]: null },
             },
-            attributes: { exclude: ['MerchantId'] },
         });
     }
 
@@ -223,7 +222,6 @@ exports.edit = async (req, res) => {
         where: {
             id,
         },
-        attributes: { exclude: ['MerchantId'] },
     });
 
     if (!transaction) {
@@ -327,17 +325,17 @@ exports.edit = async (req, res) => {
     if (customer_id) {
         const customer = await Customer.findOne({
             where: {
-                id: customer_id
-            }
+                id: customer_id,
+            },
         });
-    
+
         if (!customer) {
             return res.status(400).send({
                 status: 'error',
                 message: 'Customer not found',
             });
         }
-    
+
         if (!canEdit(req.authUser, customer)) {
             return res.status(403).send('Forbidden');
         }
@@ -357,8 +355,10 @@ exports.edit = async (req, res) => {
         });
     }
 
-    group.save()
     transaction.save();
+    if (group) {
+        group.save();
+    }
 
     res.send({
         status: 'success',
@@ -373,8 +373,7 @@ exports.delete = async (req, res) => {
         where: {
             id,
         },
-        attributes: { exclude: ['MerchantId'] },
-        include: ['product']
+        include: ['product'],
     });
 
     if (!transaction) {
@@ -391,14 +390,14 @@ exports.delete = async (req, res) => {
     if (transaction.product.group_id) {
         const group = await ProductsGroups.findOne({
             where: {
-                id: transaction.product.group_id
-            }
+                id: transaction.product.group_id,
+            },
         });
 
         if (transaction.type === 'sell') {
-            group.quantity += transaction.quantity
+            group.quantity += transaction.quantity;
         } else {
-            group.quantity -= transaction.quantity
+            group.quantity -= transaction.quantity;
         }
 
         group.save();
@@ -439,7 +438,6 @@ exports.revenue = async (req, res) => {
             },
             merchant_id: req.authUser.merchant_id || { [Op.not]: null },
         },
-        attributes: { exclude: ['MerchantId'] },
     });
 
     let In = [];
@@ -467,7 +465,6 @@ exports.revenue = async (req, res) => {
                 },
                 merchant_id: req.authUser.merchant_id || { [Op.not]: null },
             },
-            attributes: { exclude: ['MerchantId'] },
         });
     }
 
@@ -480,7 +477,7 @@ exports.revenue = async (req, res) => {
             },
             merchant_id: req.authUser.merchant_id || { [Op.not]: null },
         },
-        attributes: { exclude: ['MerchantId'] },
+
         include: ['product'],
         order: [['updated_at', 'desc']],
         limit: limit,

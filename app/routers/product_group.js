@@ -25,7 +25,8 @@ const mwareAdd = (req, res, next) => {
 
 router.get('/', productGroupController.fetch);
 router.post('/', mwareAdd, productGroupController.add);
-router.put('/:group_id(\\d+)', mwareAdd, productGroupController.edit);
-router.delete('/:group_id(\\d+)', mwareAdd, productGroupController.delete);
+router.put('/:id(\\d+)', mwareAdd, productGroupController.edit);
+router.delete('/:id(\\d+)', mwareAdd, productGroupController.delete);
+router.put('/refresh_stocks/:id(\\d+)', mwareAdd, productGroupController.refresh_stocks);
 
 module.exports = router;

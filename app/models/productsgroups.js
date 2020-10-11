@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     });
     models.ProductsGroups.hasMany(models.Product, {
       foreignKey: 'group_id',
-      as: 'product_group',
+      as: 'products',
     });
   };
   return ProductsGroups;

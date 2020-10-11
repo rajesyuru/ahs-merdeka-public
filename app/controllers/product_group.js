@@ -1,4 +1,4 @@
-const { Product, Op, ProductsGroups } = require('../models');
+const { Transaction, Op, ProductsGroups } = require('../models');
 const Joi = require('@hapi/joi');
 const { modifyAccess } = require('../permissions/product_group');
 
@@ -60,7 +60,7 @@ exports.fetch = async (req, res) => {
             merchant_id: merchant_id || { [Op.not]: null },
         },
         order: sortBy,
-        include: ['owner', 'product_group'],
+        include: ['owner', 'products'],
         limit: limit,
         offset: offset,
     });
@@ -122,7 +122,7 @@ exports.edit = async (req, res) => {
 
     const name = req.body.name;
     const quantity = req.body.quantity;
-    const group_id = req.params.group_id;
+    const group_id = id;
 
     const productsGroup = await ProductsGroups.findOne({
         where: {
@@ -157,29 +157,69 @@ exports.edit = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
-    const group_id = req.params.group_id;
+    const group_id = id;
 
     const productsGroup = await ProductsGroups.findOne({
         where: {
-            id: group_id
-        }
+            id: group_id,
+        },
     });
 
     if (!productsGroup) {
         return res.status(400).send({
             status: 'error',
-            message: 'Item not found'
+            message: 'Item not found',
         });
     }
 
     if (!modifyAccess(req.authUser, productsGroup)) {
-        return res.status(403).send('Forbidden')
+        return res.status(403).send('Forbidden');
     }
 
     productsGroup.destroy();
 
     res.send({
         status: 'success',
-        data: productsGroup
-    })
+        data: productsGroup,
+    });
+};
+
+exports.refresh_stocks = async (req, res) => {
+    const id = req.params.id;
+
+    const group = await ProductsGroups.findByPk(id);
+
+    if (!group) {
+        return res.status(400).send({
+            status: 'error',
+            message: 'Item not found'
+        })
+    }
+
+    if (!modifyAccess(req.authUser, group)) {
+        return res.status(403).send('Forbidden')
+    }
+
+    const merchant_id = req.authUser.merchant_id;
+
+    const transactions = await Transaction.findAll({
+        where: {
+            merchant_id,
+        },
+    });
+
+    const total = transactions.map((item) =>
+        item.type === 'sell' ? item.quantity * -1 : item.quantity
+    );
+
+    const sum = total.reduce((a, b) => a + b, 0);
+
+    group.quantity = sum;
+
+    group.save();
+
+    res.send({
+        status: 'success',
+        data: group,
+    });
 };

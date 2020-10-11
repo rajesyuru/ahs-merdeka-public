@@ -33,16 +33,13 @@ exports.groups = async (req, res) => {
 };
 
 exports.setMerchantId = async (req, res) => {
-    await Transaction.findAll({
-        attributes: { exclude: ['MerchantId'] },
-    }).then((transactions) => {
+    await Transaction.findAll().then((transactions) => {
         transactions.map(async (transaction) => {
             await Transaction.findOne({
                 where: {
                     id: transaction.id,
                 },
                 include: ['product'],
-                attributes: { exclude: ['MerchantId'] },
             }).then((item) => {
                 item.merchant_id = item.product.merchant_id;
                 item.save();
