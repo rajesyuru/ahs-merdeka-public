@@ -15,7 +15,8 @@ exports.fetch = async (req, res) => {
         page: Joi.number(),
         limit: Joi.number(),
         id: Joi.number(),
-        date: Joi.date().format('YYYY-MM-DD'),
+        start_date: Joi.date().format('YYYY-MM-DD'),
+        end_date: Joi.date().format('YYYY-MM-DD'),
         product_id: Joi.number(),
         type: Joi.string(),
         info: Joi.string(),
@@ -35,7 +36,7 @@ exports.fetch = async (req, res) => {
 
     const page = req.query.page * 1 || 1;
     const idSearch = req.query.id * 1 || null;
-    const dateSearch = req.query.date;
+    const dateSearch = req.query.start_date || req.query.end_date;
     const productSearch = req.query.product_id * 1 || null;
     const typeSearch = req.query.search;
     const infoSearch = req.query.info || '';
