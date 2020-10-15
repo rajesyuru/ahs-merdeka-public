@@ -33,7 +33,7 @@ exports.login = async (req, res) => {
                 payload,
                 process.env.REFRESH_TOKEN_SECRET,
                 {
-                    expiresIn: '7d',
+                    expiresIn: 5,
                 }
             );
             res.send({
