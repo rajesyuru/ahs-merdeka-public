@@ -17,7 +17,9 @@ exports.fetch = async (req, res) => {
 		id: Joi.number(),
 		start_date: Joi.date().format('YYYY-MM-DD'),
 		end_date: Joi.date().format('YYYY-MM-DD'),
-		product_id: Joi.number(),
+		product_id: Joi.number().allow(null),
+		group_id: Joi.number().allow(null),
+		customer_id: Joi.number().allow(null),
 		type: Joi.string(),
 		info: Joi.string(),
 		sort: Joi.string(),
@@ -39,8 +41,18 @@ exports.fetch = async (req, res) => {
 	const idSearch = req.query.id * 1 || null;
 	const dateSearch = req.query.start_date || req.query.end_date;
 	const productSearch = req.query.product_id * 1 || null;
-	const typeSearch = req.query.search;
+	const typeSearch = req.query.type || null;
 	const infoSearch = req.query.info || '';
+	const customerSearch = req.query.customer_id * 1 || null;
+	const groupSearch = req.query.group_id * 1 || null;
+
+	if (productSearch && groupSearch) {
+		return res.status(400).send({
+			status: 'error',
+			message:
+				'You must choose either search by product_id or by group_id',
+		});
+	}
 
 	let sortBy = [['updated_at', 'desc']];
 	const querysortBy = req.query.sort;
@@ -66,20 +78,45 @@ exports.fetch = async (req, res) => {
 		});
 	}
 
+	let products = [];
+
+	if (groupSearch !== null) {
+		const group = await Product.findAll({
+			where: {
+				group_id: groupSearch,
+			},
+		});
+
+		if (group.length === 0) {
+			return res.status(404).send({
+				status: 'error',
+				message: 'No product found with specified product group',
+			});
+		}
+
+		group.forEach((item) => {
+			products.push(item.id);
+		});
+	}
+
+	console.log(productSearch || products.length > 0);
+
 	const offset = (page - 1) * limit;
 
 	const { count, rows } = await Transaction.findAndCountAll({
 		where: {
 			id: idSearch || { [Op.not]: null },
 			date: dateSearch ? new Date(dateSearch) : { [Op.not]: null },
-			product_id: productSearch || { [Op.gt]: 0 },
-			type: typeSearch
+			product_id: productSearch
+				? productSearch
+				: products.length > 0
 				? {
-						[Op.iLike]: `%${typeSearch}%`,
+						[Op.or]: products,
 				  }
-				: {
-						[Op.not]: null,
-				  },
+				: { [Op.not]: null },
+			type: typeSearch || {
+				[Op.not]: null,
+			},
 			info: infoSearch
 				? {
 						[Op.iLike]: `%${infoSearch}%`,
@@ -91,6 +128,9 @@ exports.fetch = async (req, res) => {
 						},
 				  },
 			merchant_id: merchant_id || { [Op.not]: null },
+			customer_id: customerSearch || {
+				[Op.or]: { [Op.is]: null, [Op.not]: null },
+			},
 		},
 		include: ['product', 'customer'],
 		order: sortBy,
