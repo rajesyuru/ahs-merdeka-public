@@ -28,7 +28,6 @@ exports.fetch = async (req, res) => {
 	const { error } = schema.validate(req.query);
 
 	if (error) {
-		console.log(req.query.limit);
 		return res.status(400).send({
 			status: 'error',
 			message: error.message,
@@ -98,8 +97,6 @@ exports.fetch = async (req, res) => {
 			products.push(item.id);
 		});
 	}
-
-	console.log(productSearch || products.length > 0);
 
 	const offset = (page - 1) * limit;
 
@@ -539,4 +536,97 @@ exports.revenue = async (req, res) => {
 			},
 		},
 	});
+};
+
+exports.report = async (req, res) => {
+	const schema = Joi.object({
+		date: Joi.date().format('YYYY-MM-DD'),
+	});
+
+	const { error } = schema.validate(req.query);
+
+	if (error) {
+		return res.status(400).send({
+			status: 'error',
+			message: error.message,
+		});
+	}
+
+	const date = req.query.date;
+	const merchant_id = req.authUser.merchant_id;
+
+	const datas = [];
+
+	const products = await Product.findAll({
+		where: {
+			group_id: { [Op.not]: null },
+			merchant_id: merchant_id || { [Op.not]: null },
+		},
+		attributes: ['id', 'name'],
+	});
+
+	if (products.length === 0) {
+		return res.status(400).send({
+			status: 'error',
+			message: 'Item not found',
+		});
+	}
+
+	for (let i = 0; i < products.length; i++) {
+		const transactions = await Transaction.findAll({
+			where: {
+				date: date ? new Date(date) : { [Op.not]: null },
+				merchant_id: merchant_id || { [Op.not]: null },
+				product_id: products[i].id,
+			},
+			attributes: ['quantity', 'type'],
+		}).catch((e) => {
+			console.log(e);
+			res.status(400).send({
+				status: 'error',
+				message: e && e.message,
+			});
+			return false;
+		});
+
+		if (!transactions) {
+			break;
+		}
+
+		const data = {
+			name: products[i].name,
+			total_buy: 0,
+			total_sell: 0,
+			buy: 0,
+			sell: 0,
+			stock: 0,
+		};
+
+		if (transactions.length > 0) {
+			transactions.forEach((item) => {
+				if (item.type === 'buy') {
+					data.total_buy += 1;
+					data.buy += item.quantity * 1;
+				} else {
+					data.total_sell += 1;
+					data.sell += item.quantity * 1;
+				}
+			});
+
+			data.stock = transactions
+				.map((item) =>
+					item.type === 'buy' ? item.quantity : item.quantity * -1
+				)
+				.reduce((a, b) => a + b, 0);
+		}
+
+		datas.push(data);
+		if (datas.length === products.length) {
+			res.send({
+				status: 'success',
+				data: datas,
+			});
+		}
+	}
+	// res.send(products);
 };

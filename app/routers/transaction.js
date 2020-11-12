@@ -9,25 +9,26 @@ const router = express.Router();
 router.use(jwtAuth);
 
 router.use((req, res, next) => {
-    if (!haveAccess(req.authUser)) {
-        return res.status(403).send('Forbidden')
-    }
+	if (!haveAccess(req.authUser)) {
+		return res.status(403).send('Forbidden');
+	}
 
-    next();
-})
+	next();
+});
 
 const mwareAdd = (req, res, next) => {
-    if (!addAccess(req.authUser)) {
-        return res.status(403).send('Forbidden');
-    }
+	if (!addAccess(req.authUser)) {
+		return res.status(403).send('Forbidden');
+	}
 
-    next();
+	next();
 };
 
 router.get('/', transactionController.fetch);
 router.post('/', mwareAdd, transactionController.add);
 router.put('/:transaction_id(\\d+)', mwareAdd, transactionController.edit);
 router.delete('/:transaction_id(\\d+)', mwareAdd, transactionController.delete);
-router.get('/revenue', mwareAdd, transactionController.revenue)
+router.get('/revenue', mwareAdd, transactionController.revenue);
+router.get('/report', transactionController.report);
 
 module.exports = router;
