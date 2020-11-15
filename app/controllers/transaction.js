@@ -9,6 +9,7 @@ const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const { modifyAccess } = require('../permissions/transaction');
 const { canEdit } = require('../permissions/customer');
 const moment = require('moment');
+const sequelize = require('sequelize');
 
 exports.fetch = async (req, res) => {
 	const schema = Joi.object({
@@ -540,7 +541,7 @@ exports.revenue = async (req, res) => {
 
 exports.report = async (req, res) => {
 	const schema = Joi.object({
-		date: Joi.date().format('YYYY-MM-DD'),
+		date: Joi.date().format('YYYY-MM-DD').required(),
 	});
 
 	const { error } = schema.validate(req.query);
@@ -557,76 +558,120 @@ exports.report = async (req, res) => {
 
 	const datas = [];
 
-	const products = await Product.findAll({
+	const groups = await ProductsGroups.findAll({
 		where: {
-			group_id: { [Op.not]: null },
-			merchant_id: merchant_id || { [Op.not]: null },
+			merchant_id: merchant_id,
 		},
 		attributes: ['id', 'name'],
 	});
 
-	if (products.length === 0) {
+	if (groups.length === 0) {
 		return res.status(400).send({
 			status: 'error',
 			message: 'Item not found',
 		});
 	}
 
-	for (let i = 0; i < products.length; i++) {
-		const transactions = await Transaction.findAll({
+	let error_catch = false;
+
+	for (let i = 0; i < groups.length; i++) {
+		const squeeze = (input) => {
+			return `(
+				select
+					${input}
+				from
+					"Transactions" t,
+					"Products" p
+				where
+					date("date") = '${date}' and
+					t.product_id = p.id and
+					t.merchant_id = ${merchant_id} and
+					p.group_id = ${groups[i].id}
+			)`;
+		};
+
+		const custom = await Transaction.findOne({
 			where: {
-				date: date ? new Date(date) : { [Op.not]: null },
-				merchant_id: merchant_id || { [Op.not]: null },
-				product_id: products[i].id,
+				merchant_id: merchant_id,
 			},
-			attributes: ['quantity', 'type'],
+			attributes: [
+				[
+					sequelize.literal(
+						squeeze(
+							`case when sum(case when t.type='sell' then 1 else 0 end) is not null then sum(case when t.type='sell' then 1 else 0 end) else 0 end`
+						)
+					),
+					'sell',
+				],
+				[
+					sequelize.literal(
+						squeeze(
+							`case when sum(case when t.type='buy' then 1 else 0 end) is not null then sum(case when t.type='buy' then 1 else 0 end) else 0 end`
+						)
+					),
+					'buy',
+				],
+				[
+					sequelize.literal(
+						squeeze(
+							`case when sum(case when t.type='sell' then t.quantity else 0 end) is not null then sum(case when t.type='sell' then t.quantity else 0 end) else 0 end`
+						)
+					),
+					'qty_sell',
+				],
+				[
+					sequelize.literal(
+						squeeze(
+							`case when sum(case when t.type='buy' then t.quantity else 0 end) is not null then sum(case when t.type='buy' then t.quantity else 0 end) else 0 end`
+						)
+					),
+					'qty_buy',
+				],
+				[
+					sequelize.literal(
+						squeeze(
+							`case when sum(case when t.type='buy' then t.quantity else t.quantity * -1 end) is not null then sum(case when t.type='buy' then t.quantity else t.quantity * -1 end) else 0 end`
+						)
+					),
+					'total',
+				],
+				[
+					sequelize.literal(`(
+						SELECT
+							case when sum(case when t.type='buy' then t.quantity else t.quantity * -1 end) is not null then sum(case when t.type='buy' then t.quantity else t.quantity * -1 end) else 0 end
+						FROM
+							"Transactions" t,
+							"Products" p
+						WHERE
+							date("date") <= '${date}' and
+							t.product_id = p.id and
+							t.merchant_id = ${merchant_id} and
+							p.group_id = ${groups[i].id}
+					)`),
+					'stock',
+				],
+			],
 		}).catch((e) => {
-			console.log(e);
 			res.status(400).send({
 				status: 'error',
 				message: e && e.message,
 			});
-			return false;
 		});
 
-		if (!transactions) {
+		if (error_catch) {
 			break;
-		}
-
-		const data = {
-			name: products[i].name,
-			total_buy: 0,
-			total_sell: 0,
-			buy: 0,
-			sell: 0,
-			stock: 0,
-		};
-
-		if (transactions.length > 0) {
-			transactions.forEach((item) => {
-				if (item.type === 'buy') {
-					data.total_buy += 1;
-					data.buy += item.quantity * 1;
-				} else {
-					data.total_sell += 1;
-					data.sell += item.quantity * 1;
-				}
+		} else {
+			datas.push({
+				name: groups[i].name,
+				date: new Date(date),
+				...(custom && custom.dataValues),
 			});
-
-			data.stock = transactions
-				.map((item) =>
-					item.type === 'buy' ? item.quantity : item.quantity * -1
-				)
-				.reduce((a, b) => a + b, 0);
-		}
-
-		datas.push(data);
-		if (datas.length === products.length) {
-			res.send({
-				status: 'success',
-				data: datas,
-			});
+			if (datas.length === groups.length) {
+				res.send({
+					status: 'success',
+					data: datas,
+				});
+			}
 		}
 	}
-	// res.send(products);
 };
